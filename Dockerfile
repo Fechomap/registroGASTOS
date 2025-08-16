@@ -8,7 +8,12 @@ RUN npm install -g pnpm
 # Copy package files
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/telegram-bot/package.json ./apps/telegram-bot/
-COPY packages/*/package.json ./packages/*/
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/database/package.json ./packages/database/
+COPY packages/core/package.json ./packages/core/
+COPY packages/storage/package.json ./packages/storage/
+COPY packages/ai-processor/package.json ./packages/ai-processor/
+COPY packages/reports/package.json ./packages/reports/
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
