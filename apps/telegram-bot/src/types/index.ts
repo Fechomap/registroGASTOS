@@ -57,7 +57,7 @@ export interface UserManagementData {
 
 // Datos para categorías
 export interface CategoryManagementData {
-  step: 'action' | 'name' | 'icon' | 'color' | 'parent' | 'confirm';
+  step: 'action' | 'name' | 'icon' | 'color' | 'parent' | 'confirm' | 'select_field';
   action?: 'add' | 'edit' | 'delete' | 'list';
   categoryId?: string;
   name?: string;

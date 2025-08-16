@@ -1,6 +1,14 @@
 import { Category, Prisma } from '@prisma/client';
 import prisma from '../client';
 
+export type CategoryWithRelations = Category & {
+  parent?: Category | null;
+  children?: Category[];
+  _count?: {
+    movements: number;
+  };
+};
+
 export class CategoryRepository {
   async create(data: Prisma.CategoryCreateInput): Promise<Category> {
     return prisma.category.create({
@@ -8,7 +16,7 @@ export class CategoryRepository {
     });
   }
 
-  async findById(id: string): Promise<Category | null> {
+  async findById(id: string): Promise<CategoryWithRelations | null> {
     return prisma.category.findUnique({
       where: { id },
       include: {

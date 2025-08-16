@@ -11,6 +11,7 @@ import { userCommands } from './user.commands';
 import { reportCommand } from './report.command';
 import { editCommand } from './edit.command';
 import { deleteCommand } from './delete.command';
+import { categoriesCommand } from './categories.command';
 import { editFlowMiddleware } from '../middleware/edit-flow.middleware';
 import { 
   handleEditFieldSelection,
@@ -27,13 +28,25 @@ import {
   handleUserDeleteConfirmation,
   handleUserDeleteCancel
 } from '../callbacks/user.callbacks';
+import { handleAssignCategory } from '../callbacks/assign-category.callbacks';
+import { categoryFlowMiddleware } from '../middleware/category-flow.middleware';
+import {
+  handleCategoryAction,
+  handleCategoryParentSelection,
+  handleCategoryEdit,
+  handleCategoryDelete,
+  handleCategoryConfirmDelete,
+  handleCategoryCancel,
+  handleCategoryBack
+} from '../callbacks/categories.callbacks';
 
 /**
  * Configurar todos los comandos del bot
  */
 export function setupCommands(bot: Bot<MyContext>) {
-  // Middleware para manejar flujos de edición
+  // Middleware para manejar flujos
   bot.use(editFlowMiddleware);
+  bot.use(categoryFlowMiddleware);
 
   // Callbacks para edición
   bot.callbackQuery(/^edit_/, async (ctx) => {
@@ -74,6 +87,32 @@ export function setupCommands(bot: Bot<MyContext>) {
     }
   });
 
+  // Callbacks para gestión de categorías
+  bot.callbackQuery(/^category_/, async (ctx) => {
+    const data = ctx.callbackQuery.data;
+    
+    if (['category_add', 'category_edit', 'category_delete', 'category_details', 'category_close'].includes(data)) {
+      await handleCategoryAction(ctx);
+    } else if (data.startsWith('category_parent_')) {
+      await handleCategoryParentSelection(ctx);
+    } else if (data.startsWith('category_edit_')) {
+      await handleCategoryEdit(ctx);
+    } else if (data.startsWith('category_delete_')) {
+      await handleCategoryDelete(ctx);
+    } else if (data.startsWith('category_confirm_delete_')) {
+      await handleCategoryConfirmDelete(ctx);
+    } else if (data === 'category_cancel') {
+      await handleCategoryCancel(ctx);
+    } else if (data === 'category_back') {
+      await handleCategoryBack(ctx);
+    }
+  });
+
+  // Callbacks para asignación de categorías
+  bot.callbackQuery(/^assign_category_/, async (ctx) => {
+    await handleAssignCategory(ctx);
+  });
+
   // Comandos básicos (disponibles para todos)
   bot.command('start', startCommand);
   bot.command('ayuda', helpCommand);
@@ -108,6 +147,10 @@ export function setupCommands(bot: Bot<MyContext>) {
   bot.command('edit', editCommand); // Alias en inglés
   bot.command('eliminar', deleteCommand);
   bot.command('delete', deleteCommand); // Alias en inglés
+  
+  // Comandos de categorías (solo admin)
+  bot.command('categorias', categoriesCommand);
+  bot.command('categories', categoriesCommand); // Alias en inglés
   
   // Comandos de reportes
   bot.command('reporte', reportCommand);

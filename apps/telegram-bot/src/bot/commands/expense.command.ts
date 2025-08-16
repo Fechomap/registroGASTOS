@@ -1,6 +1,6 @@
 import { CommandContext } from 'grammy';
 import { MyContext } from '../../types';
-import { movementRepository } from '@financial-bot/database';
+import { movementRepository, categoryRepository } from '@financial-bot/database';
 import { logger } from '../../utils/logger';
 import { formatCurrency, validateData, expenseCommandSchema } from '@financial-bot/shared';
 
@@ -78,16 +78,37 @@ export async function expenseCommand(ctx: CommandContext<MyContext>) {
       description: validData.description,
     });
 
-    // Mensaje de confirmación
+    // Mensaje de confirmación con opción de categoría
     const confirmationMessage = 
       '✅ <b>Gasto registrado exitosamente</b>\n\n' +
       `📌 <b>Folio:</b> <code>${movement.folio}</code>\n` +
       `💸 <b>Monto:</b> ${formatCurrency(Number(movement.amount))} MXN\n` +
       `📝 <b>Descripción:</b> ${movement.description}\n` +
       `📅 <b>Fecha:</b> ${new Date().toLocaleDateString('es-MX')}\n` +
-      `👤 <b>Registrado por:</b> ${user.firstName}`;
+      `👤 <b>Registrado por:</b> ${user.firstName}\n` +
+      `📂 <b>Categoría:</b> Sin categoría`;
 
-    await ctx.reply(confirmationMessage, { parse_mode: 'HTML' });
+    // Obtener categorías disponibles para ofrecer selección
+    const categories = await categoryRepository.findByCompany(user.companyId);
+    
+    if (categories.length > 0) {
+      await ctx.reply(confirmationMessage + '\n\n💡 ¿Deseas asignar una categoría?', {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [
+            ...categories.slice(0, 8).map(cat => ([
+              { text: `${cat.icon || '📂'} ${cat.name}`, callback_data: `assign_category_${movement.id}_${cat.id}` }
+            ])),
+            [
+              { text: '📂 Sin categoría', callback_data: `assign_category_${movement.id}_none` },
+              { text: '❌ No, gracias', callback_data: 'assign_category_skip' }
+            ]
+          ]
+        }
+      });
+    } else {
+      await ctx.reply(confirmationMessage, { parse_mode: 'HTML' });
+    }
 
     // Log de la actividad
     logger.info('Expense created', {

@@ -52,6 +52,7 @@ export async function helpCommand(ctx: CommandContext<MyContext>) {
       '/usuario_eliminar [chatId] - Eliminar usuario\n' +
       '/editar [folio] - Editar movimiento\n' +
       '/eliminar [folio] - Eliminar movimiento\n' +
+      '/categorias - Gestionar categorías\n' +
       '/reporte - Generar reportes\n\n' +
       
       '📊 <b>Reportes disponibles:</b>\n' +
