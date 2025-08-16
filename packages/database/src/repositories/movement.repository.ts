@@ -1,5 +1,12 @@
-import { Movement, Prisma, MovementType } from '@prisma/client';
+import { Movement, Prisma, MovementType, Category, User, Company, Attachment } from '@prisma/client';
 import prisma from '../client';
+
+export type MovementWithRelations = Movement & {
+  category: Category | null;
+  user: User;
+  company: Company;
+  attachments: Attachment[];
+};
 
 export interface MovementFilters {
   companyId: string;
@@ -24,7 +31,7 @@ export class MovementRepository {
     });
   }
 
-  async findById(id: string): Promise<Movement | null> {
+  async findById(id: string): Promise<MovementWithRelations | null> {
     return prisma.movement.findUnique({
       where: { id },
       include: {
@@ -36,9 +43,24 @@ export class MovementRepository {
     });
   }
 
-  async findByFolio(folio: string): Promise<Movement | null> {
+  async findByFolio(folio: string): Promise<MovementWithRelations | null> {
     return prisma.movement.findUnique({
       where: { folio },
+      include: {
+        user: true,
+        category: true,
+        attachments: true,
+        company: true,
+      },
+    });
+  }
+
+  async findByFolioAndCompany(folio: string, companyId: string): Promise<MovementWithRelations | null> {
+    return prisma.movement.findFirst({
+      where: { 
+        folio,
+        companyId 
+      },
       include: {
         user: true,
         category: true,

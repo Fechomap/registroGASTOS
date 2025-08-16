@@ -11,11 +11,54 @@ import { userCommands } from './user.commands';
 import { reportCommand } from './report.command';
 import { editCommand } from './edit.command';
 import { deleteCommand } from './delete.command';
+import { editFlowMiddleware } from '../middleware/edit-flow.middleware';
+import { 
+  handleEditFieldSelection,
+  handleEditCategorySelection,
+  handleEditConfirmation,
+  handleEditCancel,
+  handleEditBack
+} from '../callbacks/edit.callbacks';
+import {
+  handleDeleteConfirmation,
+  handleDeleteCancel
+} from '../callbacks/delete.callbacks';
 
 /**
  * Configurar todos los comandos del bot
  */
 export function setupCommands(bot: Bot<MyContext>) {
+  // Middleware para manejar flujos de edición
+  bot.use(editFlowMiddleware);
+
+  // Callbacks para edición
+  bot.callbackQuery(/^edit_/, async (ctx) => {
+    const data = ctx.callbackQuery.data;
+    
+    if (data === 'edit_cancel') {
+      await handleEditCancel(ctx);
+    } else if (data === 'edit_back') {
+      await handleEditBack(ctx);
+    } else if (data === 'edit_confirm_yes' || data === 'edit_confirm_no') {
+      await handleEditConfirmation(ctx);
+    } else if (data.startsWith('edit_category_')) {
+      await handleEditCategorySelection(ctx);
+    } else if (['edit_amount', 'edit_description', 'edit_category', 'edit_date'].includes(data)) {
+      await handleEditFieldSelection(ctx);
+    }
+  });
+
+  // Callbacks para eliminación
+  bot.callbackQuery(/^delete_/, async (ctx) => {
+    const data = ctx.callbackQuery.data;
+    
+    if (data === 'delete_cancel') {
+      await handleDeleteCancel(ctx);
+    } else if (data.startsWith('delete_confirm_')) {
+      await handleDeleteConfirmation(ctx);
+    }
+  });
+
   // Comandos básicos (disponibles para todos)
   bot.command('start', startCommand);
   bot.command('ayuda', helpCommand);

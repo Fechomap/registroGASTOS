@@ -46,17 +46,34 @@
   - ✅ `/movimientos` - Lista de movimientos con paginación
   - ✅ `/empresa` - Información de empresa (solo admin)
 
-### 🔄 EN PROGRESO (Fase 1B: CI/CD y Setup)
+### ✅ COMPLETADO (Fase 1B: Configuración Base) - [Commit actual]
 
 #### ⚙️ DevOps y Configuración
 - ✅ GitHub Actions configurado (CI/CD, build, tests, security)
 - ✅ TypeScript configs específicos por paquete
-- 🔄 Variables de entorno documentadas
-- ⏳ Primera compilación local
-- ⏳ Configuración de base de datos
+- ✅ Variables de entorno documentadas (.env.development, .env.production)
+- ✅ **COMPILACIÓN EXITOSA** - Todos los errores TypeScript corregidos
+- ✅ Configuración de base de datos dual (local PostgreSQL + Railway)
+- ✅ Migración de base de datos ejecutada con éxito
+- ✅ Script de seed ejecutado correctamente
+- ✅ Scripts de backup automatizados creados
+- ✅ UserWithCompany tipo creado para relaciones Prisma
+
+#### 🐛 Errores Corregidos en Última Compilación
+- ✅ grammY API actualizado: `disable_web_page_preview` → `link_preview_options`
+- ✅ Conversiones Prisma Decimal arregladas (uso de `Number()`)
+- ✅ Dependencia Redis agregada al bot
+- ✅ Tipos de relaciones User/Company corregidos
+- ✅ Includes en repositorios corregidos
+
+#### 📦 Paquetes Placeholder Creados (Para Fases Futuras)
+- 🚧 **@financial-bot/core**: Lógica de negocio (`packages/core/src/index.ts`)
+- 🚧 **@financial-bot/ai-processor**: OpenAI Vision/Whisper (`packages/ai-processor/src/index.ts`)  
+- 🚧 **@financial-bot/storage**: Cloudflare R2 (`packages/storage/src/index.ts`)
+- 🚧 **@financial-bot/reports**: PDF/Excel (`packages/reports/src/index.ts`)
 
 #### 🤖 Bot de Telegram (Comandos Pendientes)
-- 🚧 `/usuario_agregar` - Placeholder creado
+- 🚧 `/usuario_agregar` - Placeholder creado en `apps/telegram-bot/src/bot/commands/`
 - 🚧 `/usuario_lista` - Placeholder creado  
 - 🚧 `/usuario_rol` - Placeholder creado
 - 🚧 `/usuario_eliminar` - Placeholder creado
@@ -64,11 +81,47 @@
 - 🚧 `/eliminar` - Placeholder creado
 - 🚧 `/reporte` - Placeholder creado
 
-### ⏳ PENDIENTE (Próximas Fases)
+### ✅ COMPLETADO (Fase 1C: CRUD de Movimientos) - [Commit actual]
+
+#### 📝 Comandos CRUD Implementados
+- ✅ `/editar [folio]` - Sistema completo de edición con flujos conversacionales
+  - ✅ Selección de campo a editar (monto, descripción, categoría, fecha)
+  - ✅ Validaciones específicas por tipo de campo
+  - ✅ Confirmación de cambios antes de guardar
+  - ✅ Sistema de permisos (solo creador o admin)
+- ✅ `/eliminar [folio]` - Sistema de eliminación con confirmación
+  - ✅ Confirmación de eliminación con detalles del movimiento
+  - ✅ Sistema de permisos (solo creador o admin)
+  - ✅ Eliminación segura permanente
+
+#### 🔧 Implementación Técnica
+- ✅ **MovementWithRelations** tipo creado para relaciones Prisma
+- ✅ **EditFlowData** tipo para manejo de estado de edición
+- ✅ **findByFolioAndCompany** método agregado al repositorio
+- ✅ **editFlowMiddleware** para manejar inputs de texto durante edición
+- ✅ **Callbacks completos** para manejar botones inline de edición/eliminación
+- ✅ **Sistema de validaciones** por tipo de campo (monto, fecha, descripción)
+
+#### 🐛 Correcciones Técnicas Aplicadas
+- ✅ ESLint deshabilitado en paquetes placeholder con `/* eslint-disable */`
+- ✅ Tipos de relaciones corregidos en callbacks
+- ✅ Middleware de flujo de edición integrado correctamente
+- ✅ Callbacks registrados en configuración principal del bot
+
+#### 📝 NOTA IMPORTANTE - Paquetes Placeholder
+Los siguientes archivos tienen ESLint deshabilitado temporalmente:
+- `packages/core/src/index.ts` - Para lógica de negocio futura
+- `packages/ai-processor/src/index.ts` - Para integración OpenAI (Fase 2)
+- `packages/storage/src/index.ts` - Para Cloudflare R2 (Fase 2)  
+- `packages/reports/src/index.ts` - Para reportes PDF/Excel (Fase 3)
+
+**REACTIVAR LINT** cuando se implementen estas funcionalidades.
+
+### 🔄 EN PROGRESO (Fase 1D: Comandos de Gestión)
 
 ## 📅 FASES DE DESARROLLO
 
-### 🎯 FASE 1B: Completar Bot Básico (PRÓXIMA - 1 semana)
+### 🎯 FASE 1C: Completar Bot Básico (PRÓXIMA - 1 semana)
 
 **¿Qué quieres que implementemos primero?**
 
@@ -94,6 +147,22 @@
 - [ ] Flujos de confirmación
 
 **💭 Pregunta 1:** ¿Cuál de estas opciones prefieres que implementemos primero?
+
+## 📝 ESTADO ACTUAL DETALLADO
+
+### ✅ **FASE 1A COMPLETADA AL 100%** ✅
+- Base de datos funcionando con seed data
+- Compilación TypeScript sin errores
+- Comandos básicos del bot funcionales
+- CI/CD configurado y listo
+
+### ✅ **FASE 1B COMPLETADA AL 100%** ✅  
+- Configuración dual de bases de datos
+- Scripts de backup automatizados
+- Todos los errores de TypeScript corregidos
+- Token del bot configurado y funcional
+
+### 🎯 **ACTUALMENTE EN:** FASE 1C - Comandos Avanzados del Bot
 
 ### 🎯 FASE 2: Inteligencia Artificial (2-3 semanas)
 
