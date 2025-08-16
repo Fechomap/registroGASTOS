@@ -1,4 +1,4 @@
-import { Company, Prisma } from '@prisma/client';
+import { Company, Prisma, CompanyStatus } from '@prisma/client';
 import prisma from '../client';
 
 export class CompanyRepository {
@@ -44,6 +44,57 @@ export class CompanyRepository {
         },
       },
     });
+  }
+
+  // Métodos específicos para multi-tenant
+  async findPendingCompanies(): Promise<Company[]> {
+    return prisma.company.findMany({
+      where: { status: CompanyStatus.PENDING },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async findApprovedCompanies(): Promise<Company[]> {
+    return prisma.company.findMany({
+      where: { status: CompanyStatus.APPROVED },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async approveCompany(id: string, approvedBy: string): Promise<Company> {
+    return prisma.company.update({
+      where: { id },
+      data: {
+        status: CompanyStatus.APPROVED,
+        approvedBy,
+        approvedAt: new Date(),
+      },
+    });
+  }
+
+  async rejectCompany(id: string, rejectionReason: string): Promise<Company> {
+    return prisma.company.update({
+      where: { id },
+      data: {
+        status: CompanyStatus.REJECTED,
+        rejectedAt: new Date(),
+        rejectionReason,
+      },
+    });
+  }
+
+  async suspendCompany(id: string): Promise<Company> {
+    return prisma.company.update({
+      where: { id },
+      data: {
+        status: CompanyStatus.SUSPENDED,
+      },
+    });
+  }
+
+  async isCompanyApproved(companyId: string): Promise<boolean> {
+    const company = await this.findById(companyId);
+    return company?.status === CompanyStatus.APPROVED && company.isActive;
   }
 }
 

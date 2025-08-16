@@ -1,6 +1,6 @@
 import { Bot } from 'grammy';
 import { MyContext } from '../../types';
-import { startCommand } from './start.command';
+// import { startCommand } from './start.command'; // Reemplazado por newStartCommand
 import { helpCommand } from './help.command';
 import { profileCommand } from './profile.command';
 import { expenseCommand } from './expense.command';
@@ -12,7 +12,13 @@ import { reportCommand } from './report.command';
 import { editCommand } from './edit.command';
 import { deleteCommand } from './delete.command';
 import { categoriesCommand } from './categories.command';
+import { registerCompanyCommand } from './setup.command';
+import { adminCompaniesCommand, approveCompanyCommand, rejectCompanyCommand } from './admin.command';
+import { setupSuperAdminCommand } from './setup-admin.command';
+import { menuCommand, startCommand as newStartCommand } from './menu.command';
+import { handleMenuCallback } from '../callbacks/menu.callbacks';
 import { editFlowMiddleware } from '../middleware/edit-flow.middleware';
+import { companyApprovalMiddleware } from '../middleware/company-approval.middleware';
 import { 
   handleEditFieldSelection,
   handleEditCategorySelection,
@@ -45,6 +51,7 @@ import {
  */
 export function setupCommands(bot: Bot<MyContext>) {
   // Middleware para manejar flujos
+  bot.use(companyApprovalMiddleware);
   bot.use(editFlowMiddleware);
   bot.use(categoryFlowMiddleware);
 
@@ -113,10 +120,23 @@ export function setupCommands(bot: Bot<MyContext>) {
     await handleAssignCategory(ctx);
   });
 
+  // Callbacks para menús principales
+  bot.callbackQuery(/^main_|^admin_|^users_|^reports_|^profile_/, async (ctx) => {
+    await handleMenuCallback(ctx);
+  });
+
   // Comandos básicos (disponibles para todos)
-  bot.command('start', startCommand);
+  bot.command('start', newStartCommand); // Nuevo comando start con menú
+  bot.command('menu', menuCommand); // Comando principal del menú
+  bot.command('register_company', registerCompanyCommand); // Registro de empresa
+  bot.command('setup_super_admin', setupSuperAdminCommand); // Configurar primer super admin
   bot.command('ayuda', helpCommand);
   bot.command('help', helpCommand); // Alias en inglés
+  
+  // Comandos de super admin
+  bot.command('admin_companies', adminCompaniesCommand);
+  bot.command('approve_company', approveCompanyCommand);
+  bot.command('reject_company', rejectCompanyCommand);
   
   // Comandos que requieren autenticación
   bot.command('perfil', profileCommand);

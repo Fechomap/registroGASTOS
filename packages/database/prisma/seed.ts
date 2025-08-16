@@ -1,11 +1,27 @@
-import { PrismaClient, UserRole } from '@prisma/client';
+import { PrismaClient, UserRole, CompanyStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('🌱 Iniciando seed de la base de datos...');
 
-  // Crear empresa de ejemplo
+  // Crear super admin del sistema
+  const superAdmin = await prisma.systemAdmin.upsert({
+    where: { telegramId: 'CHANGE_THIS_ID' },
+    update: {},
+    create: {
+      telegramId: 'CHANGE_THIS_ID', // ⚠️ CAMBIAR por tu Telegram ID real
+      chatId: 'CHANGE_THIS_CHAT_ID', // ⚠️ CAMBIAR por tu Chat ID real
+      firstName: 'Super',
+      lastName: 'Admin',
+      username: 'superadmin',
+    },
+  });
+
+  console.log('✅ Super Admin creado:', superAdmin.firstName);
+  console.log('⚠️  IMPORTANTE: Cambia el telegramId y chatId en el seed antes de usar en producción');
+
+  // Crear empresa de ejemplo (APROBADA)
   const demoCompany = await prisma.company.upsert({
     where: { id: 'demo-company' },
     update: {},
@@ -14,6 +30,9 @@ async function main() {
       name: 'Empresa Demo',
       email: 'admin@empresademo.com',
       phone: '+52 55 1234 5678',
+      status: CompanyStatus.APPROVED,
+      approvedBy: superAdmin.id,
+      approvedAt: new Date(),
       settings: {
         currency: 'MXN',
         timezone: 'America/Mexico_City',

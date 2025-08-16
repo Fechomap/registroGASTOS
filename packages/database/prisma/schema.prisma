@@ -27,11 +27,24 @@ enum ProcessingStatus {
   FAILED
 }
 
+enum CompanyStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
 model Company {
   id            String         @id @default(cuid())
   name          String
   email         String
   phone         String
+  status        CompanyStatus  @default(PENDING)
+  requestedBy   String?        // Telegram ID del solicitante
+  approvedBy    String?        // ID del super admin que aprobó
+  approvedAt    DateTime?
+  rejectedAt    DateTime?
+  rejectionReason String?
   settings      Json           @default("{}")
   isActive      Boolean        @default(true)
   createdAt     DateTime       @default(now())
@@ -42,8 +55,23 @@ model Company {
   movements     Movement[]
   notifications Notification[]
   
+  @@index([status])
   @@index([isActive])
   @@map("companies")
+}
+
+model SystemAdmin {
+  id          String   @id @default(cuid())
+  telegramId  String   @unique
+  chatId      String   @unique
+  firstName   String
+  lastName    String?
+  username    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("system_admins")
 }
 
 model User {

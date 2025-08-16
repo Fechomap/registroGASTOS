@@ -1,4 +1,8 @@
-import 'dotenv/config';
+import { config } from 'dotenv';
+import { resolve } from 'path';
+
+// Cargar variables de entorno desde el directorio raíz
+config({ path: resolve(process.cwd(), '../../', '.env') });
 import { Bot, session } from 'grammy';
 import { conversations } from '@grammyjs/conversations';
 import { hydrate } from '@grammyjs/hydrate';
