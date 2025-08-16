@@ -8,7 +8,7 @@ nodeVersion = "20"
 packageManager = "pnpm"
 
 [deploy]
-startCommand = "node dist/apps/telegram-bot/src/index.js"
+startCommand = "node apps/telegram-bot/dist/index.js"
 restartPolicyType = "always"
 
 [env]
