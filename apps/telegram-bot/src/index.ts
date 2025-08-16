@@ -1,8 +1,13 @@
-import { config } from 'dotenv';
-import { resolve } from 'path';
-
-// Cargar variables de entorno desde el directorio raíz
-config({ path: resolve(process.cwd(), '../../', '.env') });
+// Solo cargar dotenv en desarrollo - Railway inyecta variables automáticamente
+if (process.env.NODE_ENV !== 'production') {
+  try {
+    const dotenv = require('dotenv');
+    const path = require('path');
+    dotenv.config({ path: path.resolve(process.cwd(), '../../', '.env') });
+  } catch (error) {
+    console.log('dotenv not available - using environment variables');
+  }
+}
 import { Bot, session } from 'grammy';
 import { conversations } from '@grammyjs/conversations';
 import { hydrate } from '@grammyjs/hydrate';
