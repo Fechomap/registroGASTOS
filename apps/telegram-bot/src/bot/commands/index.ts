@@ -23,6 +23,10 @@ import {
   handleDeleteConfirmation,
   handleDeleteCancel
 } from '../callbacks/delete.callbacks';
+import {
+  handleUserDeleteConfirmation,
+  handleUserDeleteCancel
+} from '../callbacks/user.callbacks';
 
 /**
  * Configurar todos los comandos del bot
@@ -56,6 +60,17 @@ export function setupCommands(bot: Bot<MyContext>) {
       await handleDeleteCancel(ctx);
     } else if (data.startsWith('delete_confirm_')) {
       await handleDeleteConfirmation(ctx);
+    }
+  });
+
+  // Callbacks para gestión de usuarios
+  bot.callbackQuery(/^user_/, async (ctx) => {
+    const data = ctx.callbackQuery.data;
+    
+    if (data === 'user_delete_cancel') {
+      await handleUserDeleteCancel(ctx);
+    } else if (data.startsWith('user_delete_confirm_')) {
+      await handleUserDeleteConfirmation(ctx);
     }
   });
 

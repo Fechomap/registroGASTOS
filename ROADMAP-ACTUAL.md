@@ -117,7 +117,40 @@ Los siguientes archivos tienen ESLint deshabilitado temporalmente:
 
 **REACTIVAR LINT** cuando se implementen estas funcionalidades.
 
-### 🔄 EN PROGRESO (Fase 1D: Comandos de Gestión)
+### ✅ COMPLETADO (Fase 1D: Gestión de Usuarios) - [Commit actual]
+
+#### 👥 Comandos de Gestión de Usuarios Implementados
+- ✅ `/usuario_agregar [chatId] [nombre]` - Agregar nuevos usuarios a la empresa
+  - ✅ Validación de usuarios existentes y permisos
+  - ✅ Asignación automática de rol Operador por defecto
+  - ✅ Verificación de empresa para evitar duplicados
+- ✅ `/usuario_lista` - Lista completa de usuarios de la empresa
+  - ✅ Separación entre usuarios activos e inactivos
+  - ✅ Información detallada (nombre, chatId, rol, fecha)
+  - ✅ Contadores y estadísticas visuales
+- ✅ `/usuario_rol [chatId] [admin|operator]` - Cambio de roles
+  - ✅ Validación de roles válidos (admin/operator)
+  - ✅ Prevención de auto-modificación de rol
+  - ✅ Verificación de pertenencia a empresa
+- ✅ `/usuario_eliminar [chatId]` - Eliminación segura de usuarios
+  - ✅ Confirmación con botones inline
+  - ✅ Preservación de movimientos para auditoría
+  - ✅ Prevención de auto-eliminación
+
+#### 🔧 Implementación Técnica
+- ✅ **Callbacks de confirmación** para eliminación de usuarios
+- ✅ **Sistema de permisos** - Solo administradores pueden gestionar
+- ✅ **Validaciones robustas** para todos los comandos
+- ✅ **Interfaz intuitiva** con botones inline y confirmaciones
+- ✅ **Manejo de errores** completo con mensajes informativos
+
+#### 🔒 Sistema de Seguridad
+- ✅ Verificación de permisos de administrador en todos los comandos
+- ✅ Prevención de auto-modificación (rol y eliminación)
+- ✅ Validación de pertenencia a empresa
+- ✅ Preservación de datos de auditoría (movimientos)
+
+### 🔄 EN PROGRESO (Fase 1E: Próxima Funcionalidad)
 
 ## 📅 FASES DE DESARROLLO
 
