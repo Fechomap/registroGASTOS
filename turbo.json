@@ -45,6 +45,9 @@
       "cache": false,
       "persistent": true
     },
+    "db:generate": {
+      "cache": false
+    },
     "clean": {
       "cache": false
     }
