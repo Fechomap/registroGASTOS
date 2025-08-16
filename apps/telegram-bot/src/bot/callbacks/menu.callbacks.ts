@@ -10,6 +10,7 @@ import {
   createProfileMenu 
 } from '../menus/main.menu';
 import { createExpenseMethodMenu } from '../menus/expense.menu';
+import { confirmExpense, saveExpense } from '../handlers/conversation.handler';
 
 /**
  * Handler principal para todos los callbacks del menú
@@ -49,7 +50,39 @@ export async function handleMenuCallback(ctx: CallbackQueryContext<MyContext>) {
       case 'main_refresh':
         await showMainMenu(ctx);
         break;
+      
+      // Callbacks de expense
+      case 'expense_manual':
+        await handleExpenseManual(ctx);
+        break;
+      case 'expense_wizard':
+        await handleExpenseWizard(ctx);
+        break;
+      case 'expense_photo':
+        await handleExpensePhoto(ctx);
+        break;
+      case 'expense_voice':
+        await handleExpenseVoice(ctx);
+        break;
+      case 'expense_confirm':
+        await handleExpenseConfirm(ctx);
+        break;
+      case 'expense_edit':
+        await handleExpenseEdit(ctx);
+        break;
+      case 'expense_cancel':
+        await handleExpenseCancel(ctx);
+        break;
+      case 'expense_confirm_save':
+        await handleExpenseConfirmSave(ctx);
+        break;
+        
       default:
+        // Manejar selección de categorías
+        if (data?.startsWith('category_select_')) {
+          await handleCategorySelection(ctx);
+          return;
+        }
         await ctx.answerCallbackQuery('Opción no reconocida');
     }
   } catch (error) {
@@ -92,15 +125,25 @@ async function showMainMenu(ctx: CallbackQueryContext<MyContext>) {
 }
 
 /**
- * Mostrar menú de gastos
+ * Registrar gasto - DIRECTAMENTE conversacional
  */
 async function showExpenseMenu(ctx: CallbackQueryContext<MyContext>) {
-  const keyboard = createExpenseMethodMenu();
-  const message = `💰 **Registrar Nuevo Gasto**\n\n` +
-    `Selecciona cómo quieres registrar tu gasto:`;
+  // Inicializar el flujo de registro INMEDIATAMENTE
+  ctx.session.conversationData = {
+    registerFlow: {
+      step: 'amount',
+      type: 'EXPENSE'
+    }
+  };
+
+  const message = `💰 **Registro de Gasto - Paso 1 de 4**\n\n` +
+    `¿Cuánto gastaste?\n\n` +
+    `💡 Escribe solo el número (ejemplo: 150)`;
 
   await ctx.editMessageText(message, {
-    reply_markup: keyboard,
+    reply_markup: { 
+      inline_keyboard: [[{ text: '❌ Cancelar', callback_data: 'expense_cancel' }]] 
+    },
     parse_mode: 'Markdown'
   });
   await ctx.answerCallbackQuery();
@@ -220,4 +263,134 @@ async function showCategoriesMenu(ctx: CallbackQueryContext<MyContext>) {
     reply_markup: { inline_keyboard: [[{ text: '◀️ Menú Principal', callback_data: 'main_menu' }]] },
     parse_mode: 'Markdown'
   });
+}
+
+/**
+ * Handlers de expense callbacks
+ */
+
+/**
+ * Funciones legacy eliminadas - Ya no hay menú de métodos
+ * Todo va directo al wizard conversacional
+ */
+async function handleExpenseManual(ctx: CallbackQueryContext<MyContext>) {
+  // Redirigir al flujo principal
+  await showExpenseMenu(ctx);
+}
+
+async function handleExpenseWizard(ctx: CallbackQueryContext<MyContext>) {
+  // Redirigir al flujo principal
+  await showExpenseMenu(ctx);
+}
+
+/**
+ * Registro desde foto
+ */
+async function handleExpensePhoto(ctx: CallbackQueryContext<MyContext>) {
+  const message = `📷 **Registro Desde Foto**\n\n` +
+    `🚧 Esta función estará disponible en la **Fase 2**.\n\n` +
+    `**Funcionalidades futuras:**\n` +
+    `• Sube foto del ticket/factura\n` +
+    `• IA extrae automáticamente:\n` +
+    `  - Monto\n` +
+    `  - Fecha\n` +
+    `  - Establecimiento\n` +
+    `  - Número de factura\n` +
+    `• Confirmas y listo\n\n` +
+    `Mientras tanto, usa **Registro Manual**.`;
+
+  await ctx.editMessageText(message, {
+    reply_markup: { inline_keyboard: [[{ text: '◀️ Volver', callback_data: 'main_expense' }]] },
+    parse_mode: 'Markdown'
+  });
+  await ctx.answerCallbackQuery('🚧 Función en desarrollo - Fase 2');
+}
+
+/**
+ * Registro por voz
+ */
+async function handleExpenseVoice(ctx: CallbackQueryContext<MyContext>) {
+  const message = `🎤 **Registro Por Voz**\n\n` +
+    `🚧 Esta función estará disponible en la **Fase 4**.\n\n` +
+    `**Funcionalidades futuras:**\n` +
+    `• Graba mensaje de voz\n` +
+    `• IA transcribe y extrae:\n` +
+    `  - "Gasté 150 pesos en comida"\n` +
+    `  - Monto: $150\n` +
+    `  - Descripción: comida\n` +
+    `• Confirmas y listo\n\n` +
+    `Mientras tanto, usa **Registro Manual**.`;
+
+  await ctx.editMessageText(message, {
+    reply_markup: { inline_keyboard: [[{ text: '◀️ Volver', callback_data: 'main_expense' }]] },
+    parse_mode: 'Markdown'
+  });
+  await ctx.answerCallbackQuery('🚧 Función en desarrollo - Fase 4');
+}
+
+/**
+ * Confirmar gasto
+ */
+async function handleExpenseConfirm(ctx: CallbackQueryContext<MyContext>) {
+  await ctx.answerCallbackQuery('🚧 Función en desarrollo');
+  
+  const message = `✅ **Confirmar Gasto**\n\n` +
+    `🚧 Esta función está en desarrollo.\n` +
+    `Se implementará junto con el wizard paso a paso.`;
+
+  await ctx.editMessageText(message, {
+    reply_markup: { inline_keyboard: [[{ text: '◀️ Volver', callback_data: 'main_expense' }]] },
+    parse_mode: 'Markdown'
+  });
+}
+
+/**
+ * Editar gasto
+ */
+async function handleExpenseEdit(ctx: CallbackQueryContext<MyContext>) {
+  await ctx.answerCallbackQuery('🚧 Función en desarrollo');
+  
+  const message = `✏️ **Editar Gasto**\n\n` +
+    `🚧 Esta función está en desarrollo.\n` +
+    `Se implementará junto con el wizard paso a paso.`;
+
+  await ctx.editMessageText(message, {
+    reply_markup: { inline_keyboard: [[{ text: '◀️ Volver', callback_data: 'main_expense' }]] },
+    parse_mode: 'Markdown'
+  });
+}
+
+/**
+ * Cancelar gasto
+ */
+async function handleExpenseCancel(ctx: CallbackQueryContext<MyContext>) {
+  // Limpiar conversación
+  ctx.session.conversationData = {};
+  
+  await ctx.answerCallbackQuery('❌ Gasto cancelado');
+  
+  // Volver al menú principal
+  await showMainMenu(ctx);
+}
+
+/**
+ * Manejar selección de categoría
+ */
+async function handleCategorySelection(ctx: CallbackQueryContext<MyContext>) {
+  const data = ctx.callbackQuery.data;
+  
+  if (!data) return;
+  
+  const categoryId = data.replace('category_select_', '');
+  
+  await ctx.answerCallbackQuery();
+  await confirmExpense(ctx, categoryId);
+}
+
+/**
+ * Confirmar y guardar gasto
+ */
+async function handleExpenseConfirmSave(ctx: CallbackQueryContext<MyContext>) {
+  await ctx.answerCallbackQuery();
+  await saveExpense(ctx);
 }

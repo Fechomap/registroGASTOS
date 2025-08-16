@@ -9,7 +9,16 @@ import { BOT_MESSAGES } from '@financial-bot/shared';
  */
 export async function authMiddleware(ctx: MyContext, next: NextFunction) {
   // Comandos que no requieren autenticación
-  const publicCommands = ['/start', '/setup_super_admin', '/register_company', '/help', '/ayuda'];
+  const publicCommands = [
+    '/start', 
+    '/setup_super_admin', 
+    '/register_company', 
+    '/help', 
+    '/ayuda',
+    '/admin_companies',
+    '/approve_company',
+    '/reject_company'
+  ];
   const command = ctx.message?.text?.split(' ')[0];
   
   if (command && publicCommands.includes(command)) {

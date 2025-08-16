@@ -17,6 +17,7 @@ import { adminCompaniesCommand, approveCompanyCommand, rejectCompanyCommand } fr
 import { setupSuperAdminCommand } from './setup-admin.command';
 import { menuCommand, startCommand as newStartCommand } from './menu.command';
 import { handleMenuCallback } from '../callbacks/menu.callbacks';
+import { handleConversationMessage } from '../handlers/conversation.handler';
 import { editFlowMiddleware } from '../middleware/edit-flow.middleware';
 import { companyApprovalMiddleware } from '../middleware/company-approval.middleware';
 import { 
@@ -98,6 +99,12 @@ export function setupCommands(bot: Bot<MyContext>) {
   bot.callbackQuery(/^category_/, async (ctx) => {
     const data = ctx.callbackQuery.data;
     
+    // Manejar selección de categorías en el flujo de registro
+    if (data?.startsWith('category_select_')) {
+      await handleMenuCallback(ctx);
+      return;
+    }
+    
     if (['category_add', 'category_edit', 'category_delete', 'category_details', 'category_close'].includes(data)) {
       await handleCategoryAction(ctx);
     } else if (data.startsWith('category_parent_')) {
@@ -121,7 +128,7 @@ export function setupCommands(bot: Bot<MyContext>) {
   });
 
   // Callbacks para menús principales
-  bot.callbackQuery(/^main_|^admin_|^users_|^reports_|^profile_/, async (ctx) => {
+  bot.callbackQuery(/^main_|^admin_|^users_|^reports_|^profile_|^expense_|^category_select_/, async (ctx) => {
     await handleMenuCallback(ctx);
   });
 
@@ -178,12 +185,9 @@ export function setupCommands(bot: Bot<MyContext>) {
 
   // Manejar mensajes de texto que no son comandos
   bot.on('message:text', async (ctx) => {
-    // Si no es un comando, sugerir usar /ayuda
+    // Si no es un comando, verificar si está en una conversación
     if (!ctx.message.text.startsWith('/')) {
-      await ctx.reply(
-        '🤔 No entiendo ese mensaje. Usa /ayuda para ver los comandos disponibles.',
-        { reply_to_message_id: ctx.message.message_id }
-      );
+      await handleConversationMessage(ctx);
     }
   });
 
