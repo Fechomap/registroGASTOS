@@ -5,6 +5,11 @@
 
 set -e
 
+# Cargar variables de entorno de forma segura
+if [ -f .env ]; then
+    export $(cat .env | grep -v '^#' | xargs)
+fi
+
 BACKUP_TYPE=${1:-local}
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 BACKUP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/backups"

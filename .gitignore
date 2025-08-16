@@ -91,5 +91,10 @@ test.db-journal
 tmp/
 temp/
 
+# Database backups
+backups/
+*.sql
+*.sql.gz
+
 # Generated Prisma client
 prisma/generated/
