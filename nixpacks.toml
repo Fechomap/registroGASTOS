@@ -1,3 +1,6 @@
+# Archivo obsoleto - ahora usando Railpack en railway.toml
+# Mantenido para referencia
+
 [phases.setup]
 nixPkgs = ["nodejs_20", "pnpm"]
 

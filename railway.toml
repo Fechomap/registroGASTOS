@@ -1,5 +1,6 @@
 [build]
-builder = "nixpacks"
+builder = "railpack"
+watchPaths = ["apps/telegram-bot/**", "packages/**"]
 
 [deploy]
 startCommand = "node dist/apps/telegram-bot/src/index.js"
