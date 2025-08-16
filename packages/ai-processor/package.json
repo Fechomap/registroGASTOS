@@ -16,9 +16,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@financial-bot/shared": "workspace:*",
-    "openai": "^4.24.1",
-    "zod": "^3.22.4"
+    "@financial-bot/shared": "workspace:*"
   },
   "devDependencies": {
     "@types/jest": "^29.5.11",
