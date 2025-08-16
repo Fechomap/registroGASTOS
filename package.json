@@ -12,8 +12,8 @@
   "packageManager": "pnpm@8.15.1",
   "scripts": {
     "dev": "turbo run dev",
-    "build": "turbo run build",
-    "start:prod": "node apps/telegram-bot/dist/index.js",
+    "build": "pnpm exec prisma generate && turbo run build",
+    "start:prod": "node dist/apps/telegram-bot/src/index.js",
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint:fix",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",

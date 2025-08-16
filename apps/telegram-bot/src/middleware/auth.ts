@@ -8,8 +8,11 @@ import { BOT_MESSAGES } from '@financial-bot/shared';
  * Middleware de autenticación que verifica si el usuario está registrado
  */
 export async function authMiddleware(ctx: MyContext, next: NextFunction) {
-  // Saltar autenticación para el comando /start
-  if (ctx.message?.text?.startsWith('/start')) {
+  // Comandos que no requieren autenticación
+  const publicCommands = ['/start', '/setup_super_admin', '/register_company', '/help', '/ayuda'];
+  const command = ctx.message?.text?.split(' ')[0];
+  
+  if (command && publicCommands.includes(command)) {
     return next();
   }
 
