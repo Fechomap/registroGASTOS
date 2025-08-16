@@ -58,8 +58,8 @@ export class ConflictError extends AppError {
 }
 
 export class ExternalServiceError extends AppError {
-  constructor(message: string, service: string, details?: unknown) {
-    super(message, ERROR_CODES.EXTERNAL_SERVICE_ERROR, 502, { service, ...details });
+  constructor(message: string, service: string, details?: Record<string, unknown>) {
+    super(message, ERROR_CODES.EXTERNAL_SERVICE_ERROR, 502, { service, ...(details || {}) });
     this.name = 'ExternalServiceError';
   }
 }
@@ -102,6 +102,6 @@ export function normalizeError(error: unknown): AppError {
     'Error desconocido',
     ERROR_CODES.INTERNAL_ERROR,
     500,
-    { originalError: error }
+    { originalError: String(error) }
   );
 }

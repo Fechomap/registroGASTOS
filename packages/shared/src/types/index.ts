@@ -1,5 +1,20 @@
-// Re-export de tipos principales de Prisma
-export { UserRole, MovementType, ProcessingStatus } from '@prisma/client';
+// Definir enums localmente para evitar dependencia circular
+export enum UserRole {
+  ADMIN = 'ADMIN',
+  OPERATOR = 'OPERATOR'
+}
+
+export enum MovementType {
+  INCOME = 'INCOME',
+  EXPENSE = 'EXPENSE'
+}
+
+export enum ProcessingStatus {
+  PENDING = 'PENDING',
+  PROCESSING = 'PROCESSING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED'
+}
 
 // Tipos para el contexto del bot
 export interface BotContext {
@@ -153,4 +168,4 @@ export interface SceneData {
   data: Record<string, unknown>;
 }
 
-export { UserRole, MovementType, ProcessingStatus };
+// Los enums ya están exportados arriba

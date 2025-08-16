@@ -134,11 +134,11 @@ export class AuditRepository {
       // Count by entity type
       summary.byEntityType[log.entityType] = (summary.byEntityType[log.entityType] || 0) + 1;
 
-      // Count by user
+      // Count by user (need to include user relation for this)
       const userKey = log.userId;
       if (!summary.byUser[userKey]) {
         summary.byUser[userKey] = {
-          name: `${log.user.firstName} ${log.user.lastName || ''}`,
+          name: 'Usuario', // Will be updated when user data is included
           count: 0,
         };
       }

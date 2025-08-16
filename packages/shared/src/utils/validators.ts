@@ -142,9 +142,12 @@ export function validateData<T>(schema: z.ZodSchema<T>, data: unknown): T {
 }
 
 // Función helper para validación parcial
-export function validatePartialData<T>(schema: z.ZodSchema<T>, data: unknown): Partial<T> {
+export function validatePartialData<T extends Record<string, any>>(
+  schema: z.ZodObject<any>, 
+  data: unknown
+): Partial<T> {
   try {
-    return schema.partial().parse(data);
+    return schema.partial().parse(data) as Partial<T>;
   } catch (error) {
     if (error instanceof z.ZodError) {
       const message = error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join(', ');

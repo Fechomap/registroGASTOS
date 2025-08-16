@@ -1,8 +1,19 @@
-// Exportar todos los tipos
+// Exportar tipos (excluyendo duplicados)
 export * from './types';
 
-// Exportar todas las utilidades
+// Exportar utilidades
 export * from './utils';
 
-// Exportar errores
-export * from './errors';
+// Exportar errores (excepto los que ya están en types)
+export {
+  ValidationError,
+  UnauthorizedError,
+  ForbiddenError,
+  NotFoundError,
+  ConflictError,
+  ExternalServiceError,
+  RateLimitError,
+  createValidationError,
+  isAppError,
+  normalizeError
+} from './errors';

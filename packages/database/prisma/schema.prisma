@@ -150,6 +150,7 @@ model AuditLog {
   createdAt     DateTime       @default(now())
   
   user          User           @relation(fields: [userId], references: [id])
+  movement      Movement?      @relation(fields: [entityId], references: [id])
   
   @@index([companyId, createdAt])
   @@index([entityType, entityId])

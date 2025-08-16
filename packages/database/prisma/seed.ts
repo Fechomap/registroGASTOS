@@ -38,23 +38,26 @@ async function main() {
   ];
 
   for (const [index, category] of categories.entries()) {
-    await prisma.category.upsert({
+    const existingCategory = await prisma.category.findFirst({
       where: {
-        companyId_name_parentId: {
-          companyId: demoCompany.id,
-          name: category.name,
-          parentId: null,
-        },
-      },
-      update: {},
-      create: {
         companyId: demoCompany.id,
         name: category.name,
-        icon: category.icon,
-        color: category.color,
-        order: index,
+        parentId: null,
       },
     });
+
+    if (!existingCategory) {
+      await prisma.category.create({
+        data: {
+          companyId: demoCompany.id,
+          name: category.name,
+          icon: category.icon,
+          color: category.color,
+          order: index,
+          parentId: null,
+        },
+      });
+    }
   }
 
   console.log('✅ Categorías creadas');
@@ -75,23 +78,25 @@ async function main() {
     ];
 
     for (const [index, subcategory] of subcategories.entries()) {
-      await prisma.category.upsert({
+      const existingSubcategory = await prisma.category.findFirst({
         where: {
-          companyId_name_parentId: {
-            companyId: demoCompany.id,
-            name: subcategory.name,
-            parentId: alimentacionCategory.id,
-          },
-        },
-        update: {},
-        create: {
           companyId: demoCompany.id,
           name: subcategory.name,
-          icon: subcategory.icon,
           parentId: alimentacionCategory.id,
-          order: index,
         },
       });
+
+      if (!existingSubcategory) {
+        await prisma.category.create({
+          data: {
+            companyId: demoCompany.id,
+            name: subcategory.name,
+            icon: subcategory.icon,
+            parentId: alimentacionCategory.id,
+            order: index,
+          },
+        });
+      }
     }
 
     console.log('✅ Subcategorías de alimentación creadas');
