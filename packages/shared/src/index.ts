@@ -15,5 +15,5 @@ export {
   RateLimitError,
   createValidationError,
   isAppError,
-  normalizeError
+  normalizeError,
 } from './errors';

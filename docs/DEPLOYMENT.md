@@ -9,10 +9,10 @@
 
 ```env
 # Bot de Producción
-TELEGRAM_BOT_TOKEN=8493729556:AAEC6h3wE7sS_HOSfd0saAVaZhHlpTn-ZWo
+TELEGRAM_BOT_TOKEN=${{ TELEGRAM_BOT_TOKEN }}
 
 # Base de Datos (Railway PostgreSQL)  
-DATABASE_URL=postgresql://postgres:tjWLCyJIrprazEhIxMKTUyATLeuDyrRU@nozomi.proxy.rlwy.net:13847/railway
+DATABASE_URL=${{ Postgres.DATABASE_URL }}
 
 # Proyecto Railway
 Proyecto: GASTOS-SAAS
@@ -69,10 +69,10 @@ railway status
 
 ```env
 # ✅ Bot Configuration
-TELEGRAM_BOT_TOKEN=8493729556:AAEC6h3wE7sS_HOSfd0saAVaZhHlpTn-ZWo
+TELEGRAM_BOT_TOKEN=YOUR_BOT_TOKEN_HERE
 
 # ✅ Database (Railway PostgreSQL)
-DATABASE_URL=postgresql://postgres:tjWLCyJIrprazEhIxMKTUyATLeuDyrRU@nozomi.proxy.rlwy.net:13847/railway
+DATABASE_URL=${{ Postgres.DATABASE_URL }}
 
 # ✅ Environment
 NODE_ENV=production

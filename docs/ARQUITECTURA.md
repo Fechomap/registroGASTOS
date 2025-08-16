@@ -249,10 +249,10 @@ graph TD
 
 ```env
 # Bot
-TELEGRAM_BOT_TOKEN=8493729556:AAEC6h3wE7sS_HOSfd0saAVaZhHlpTn-ZWo
+TELEGRAM_BOT_TOKEN=${{ TELEGRAM_BOT_TOKEN }}
 
 # Database (Railway PostgreSQL)
-DATABASE_URL=postgresql://postgres:...@nozomi.proxy.rlwy.net:13847/railway
+DATABASE_URL=${{ Postgres.DATABASE_URL }}
 
 # Environment
 NODE_ENV=production

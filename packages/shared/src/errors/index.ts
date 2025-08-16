@@ -9,7 +9,7 @@ export class AppError extends Error {
     message: string,
     code: string = ERROR_CODES.INTERNAL_ERROR,
     statusCode: number = 500,
-    details?: unknown
+    details?: unknown,
   ) {
     super(message);
     this.name = 'AppError';
@@ -72,11 +72,13 @@ export class RateLimitError extends AppError {
 }
 
 // Función helper para crear errores de validación desde Zod
-export function createValidationError(zodError: any): ValidationError {
-  const message = zodError.errors?.map((err: any) => 
-    `${err.path.join('.')}: ${err.message}`
-  ).join(', ') || 'Datos inválidos';
-  
+export function createValidationError(zodError: {
+  errors?: Array<{ path: Array<string | number>; message: string }>;
+}): ValidationError {
+  const message =
+    zodError.errors?.map(err => `${err.path.join('.')}: ${err.message}`).join(', ') ||
+    'Datos inválidos';
+
   return new ValidationError(message, zodError.errors);
 }
 
@@ -98,10 +100,7 @@ export function normalizeError(error: unknown): AppError {
     });
   }
 
-  return new AppError(
-    'Error desconocido',
-    ERROR_CODES.INTERNAL_ERROR,
-    500,
-    { originalError: String(error) }
-  );
+  return new AppError('Error desconocido', ERROR_CODES.INTERNAL_ERROR, 500, {
+    originalError: String(error),
+  });
 }

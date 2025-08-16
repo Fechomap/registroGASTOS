@@ -5,7 +5,7 @@ import { MovementType } from '../types';
  */
 export function formatCurrency(amount: number | string, currency = 'MXN'): string {
   const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
-  
+
   if (isNaN(numAmount)) {
     return '$ 0.00';
   }
@@ -21,9 +21,12 @@ export function formatCurrency(amount: number | string, currency = 'MXN'): strin
 /**
  * Formatea una fecha
  */
-export function formatDate(date: Date | string, format: 'short' | 'long' | 'time' = 'short'): string {
+export function formatDate(
+  date: Date | string,
+  format: 'short' | 'long' | 'time' = 'short',
+): string {
   const dateObj = typeof date === 'string' ? new Date(date) : date;
-  
+
   if (isNaN(dateObj.getTime())) {
     return 'Fecha inválida';
   }
@@ -88,7 +91,7 @@ export function formatUserRole(role: string): string {
 export function formatPhone(phone: string): string {
   // Eliminar caracteres no numéricos excepto el +
   const cleaned = phone.replace(/[^\d+]/g, '');
-  
+
   // Si empieza con +52 (México)
   if (cleaned.startsWith('+52')) {
     const number = cleaned.slice(3);
@@ -96,12 +99,12 @@ export function formatPhone(phone: string): string {
       return `+52 ${number.slice(0, 2)} ${number.slice(2, 6)} ${number.slice(6)}`;
     }
   }
-  
+
   // Si es un número de 10 dígitos sin código de país
   if (cleaned.length === 10) {
     return `${cleaned.slice(0, 2)} ${cleaned.slice(2, 6)} ${cleaned.slice(6)}`;
   }
-  
+
   return phone; // Retornar original si no coincide con patrones
 }
 
@@ -112,7 +115,7 @@ export function truncateText(text: string, maxLength: number, suffix = '...'): s
   if (text.length <= maxLength) {
     return text;
   }
-  
+
   return text.slice(0, maxLength - suffix.length) + suffix;
 }
 
@@ -133,11 +136,11 @@ export function capitalizeWords(text: string): string {
 export function formatDateRange(startDate: Date, endDate: Date): string {
   const start = formatDate(startDate, 'short');
   const end = formatDate(endDate, 'short');
-  
+
   if (start === end) {
     return start;
   }
-  
+
   return `${start} - ${end}`;
 }
 
@@ -146,14 +149,14 @@ export function formatDateRange(startDate: Date, endDate: Date): string {
  */
 export function formatFileSize(bytes: number): string {
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  
+
   if (bytes === 0) {
     return '0 Bytes';
   }
-  
+
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   const size = bytes / Math.pow(1024, i);
-  
+
   return `${size.toFixed(2)} ${sizes[i]}`;
 }
 
@@ -179,7 +182,7 @@ export function formatProcessingStatus(status: string): string {
  * Escapa caracteres especiales para Markdown
  */
 export function escapeMarkdown(text: string): string {
-  return text.replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
+  return text.replace(/([_*[\]()~`>#+\-=|{}.!])/g, '\\$1');
 }
 
 /**
@@ -206,14 +209,14 @@ export function formatUserInfo(user: {
   username?: string | null;
 }): string {
   let name = user.firstName;
-  
+
   if (user.lastName) {
     name += ` ${user.lastName}`;
   }
-  
+
   if (user.username) {
     name += ` (@${user.username})`;
   }
-  
+
   return name;
 }

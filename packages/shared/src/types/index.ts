@@ -1,19 +1,19 @@
 // Definir enums localmente para evitar dependencia circular
 export enum UserRole {
   ADMIN = 'ADMIN',
-  OPERATOR = 'OPERATOR'
+  OPERATOR = 'OPERATOR',
 }
 
 export enum MovementType {
   INCOME = 'INCOME',
-  EXPENSE = 'EXPENSE'
+  EXPENSE = 'EXPENSE',
 }
 
 export enum ProcessingStatus {
   PENDING = 'PENDING',
   PROCESSING = 'PROCESSING',
   COMPLETED = 'COMPLETED',
-  FAILED = 'FAILED'
+  FAILED = 'FAILED',
 }
 
 // Tipos para el contexto del bot

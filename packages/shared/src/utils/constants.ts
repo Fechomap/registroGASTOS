@@ -5,13 +5,13 @@ export const BOT_COMMANDS = {
   HELP: 'ayuda',
   PROFILE: 'perfil',
   MOVEMENTS: 'movimientos',
-  
+
   // Comandos de registro
   EXPENSE: 'gasto',
   INCOME: 'ingreso',
   PHOTO: 'foto',
   REGISTER: 'registrar',
-  
+
   // Comandos administrativos
   COMPANY_INFO: 'empresa',
   USER_ADD: 'usuario_agregar',
@@ -32,7 +32,7 @@ export const BOT_MESSAGES = {
   INVALID_COMMAND: '❌ Comando inválido. Usa /ayuda para ver los comandos disponibles.',
   ERROR_GENERIC: '❌ Ocurrió un error. Intenta nuevamente.',
   SUCCESS_GENERIC: '✅ Operación completada exitosamente.',
-  
+
   // Comandos específicos
   EXPENSE_CREATED: '✅ Gasto registrado exitosamente',
   INCOME_CREATED: '✅ Ingreso registrado exitosamente',
@@ -44,7 +44,7 @@ export const BOT_MESSAGES = {
   CATEGORY_CREATED: '✅ Categoría creada exitosamente',
   CATEGORY_UPDATED: '✅ Categoría actualizada exitosamente',
   CATEGORY_DELETED: '✅ Categoría eliminada exitosamente',
-  
+
   // Procesamiento de IA
   AI_PROCESSING: '🔄 Procesando imagen con IA...',
   AI_SUCCESS: '✅ Datos extraídos exitosamente',
@@ -92,7 +92,7 @@ export const LIMITS = {
   MAX_USERS_PER_COMPANY: 100,
   MAX_MOVEMENTS_PER_DAY: 1000,
   MAX_CATEGORIES_PER_COMPANY: 100,
-  
+
   // Paginación
   DEFAULT_PAGE_SIZE: 10,
   MAX_PAGE_SIZE: 100,

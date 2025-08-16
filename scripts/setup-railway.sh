@@ -5,8 +5,8 @@
 echo "🔧 Configurando variables de entorno en Railway..."
 
 # Variables principales
-railway variables set TELEGRAM_BOT_TOKEN=8493729556:AAEC6h3wE7sS_HOSfd0saAVaZhHlpTn-ZWo
-railway variables set DATABASE_URL=postgresql://postgres:tjWLCyJIrprazEhIxMKTUyATLeuDyrRU@nozomi.proxy.rlwy.net:13847/railway
+railway variables set TELEGRAM_BOT_TOKEN='${{ TELEGRAM_BOT_TOKEN }}'
+railway variables set DATABASE_URL='${{ Postgres.DATABASE_URL }}'
 railway variables set NODE_ENV=production
 railway variables set LOG_LEVEL=info
 

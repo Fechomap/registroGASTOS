@@ -64,7 +64,10 @@ export const createCategorySchema = z.object({
   companyId: nonEmptyString,
   name: nonEmptyString.max(50, 'Nombre muy largo'),
   icon: z.string().max(10, 'Ícono muy largo').optional(),
-  color: z.string().regex(/^#[0-9A-F]{6}$/i, 'Color hex inválido').optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9A-F]{6}$/i, 'Color hex inválido')
+    .optional(),
   parentId: z.string().optional(),
   order: z.number().int().min(0).default(0),
 });
@@ -109,7 +112,9 @@ export const aiExtractionSchema = z.object({
 // Validador para archivos
 export const fileUploadSchema = z.object({
   filename: nonEmptyString,
-  mimetype: z.string().regex(/^(image|application)\/(jpeg|jpg|png|pdf)$/, 'Tipo de archivo no permitido'),
+  mimetype: z
+    .string()
+    .regex(/^(image|application)\/(jpeg|jpg|png|pdf)$/, 'Tipo de archivo no permitido'),
   size: z.number().max(10 * 1024 * 1024, 'Archivo muy grande (máximo 10MB)'),
 });
 
@@ -117,15 +122,19 @@ export const fileUploadSchema = z.object({
 export const companySettingsSchema = z.object({
   currency: currency.default('MXN'),
   timezone: z.string().default('America/Mexico_City'),
-  notifications: z.object({
-    instant: z.boolean().default(true),
-    daily: z.boolean().default(true),
-    email: z.boolean().default(false),
-  }).default({}),
-  limits: z.object({
-    maxUsers: z.number().int().min(1).max(100).default(10),
-    maxMovementsPerDay: z.number().int().min(1).max(1000).default(100),
-  }).default({}),
+  notifications: z
+    .object({
+      instant: z.boolean().default(true),
+      daily: z.boolean().default(true),
+      email: z.boolean().default(false),
+    })
+    .default({}),
+  limits: z
+    .object({
+      maxUsers: z.number().int().min(1).max(100).default(10),
+      maxMovementsPerDay: z.number().int().min(1).max(1000).default(100),
+    })
+    .default({}),
 });
 
 // Función helper para validar datos
@@ -142,9 +151,9 @@ export function validateData<T>(schema: z.ZodSchema<T>, data: unknown): T {
 }
 
 // Función helper para validación parcial
-export function validatePartialData<T extends Record<string, any>>(
-  schema: z.ZodObject<any>, 
-  data: unknown
+export function validatePartialData<T extends Record<string, unknown>>(
+  schema: z.ZodObject<z.ZodRawShape>,
+  data: unknown,
 ): Partial<T> {
   try {
     return schema.partial().parse(data) as Partial<T>;

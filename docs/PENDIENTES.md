@@ -10,8 +10,8 @@
 ### 1. **Railway Deployment** (BLOQUEADOR)
 - [ ] **Configurar variables en Railway dashboard**:
   ```
-  TELEGRAM_BOT_TOKEN=8493729556:AAEC6h3wE7sS_HOSfd0saAVaZhHlpTn-ZWo
-  DATABASE_URL=postgresql://postgres:tjWLCyJIrprazEhIxMKTUyATLeuDyrRU@nozomi.proxy.rlwy.net:13847/railway
+  TELEGRAM_BOT_TOKEN=[configured in Railway dashboard]
+  DATABASE_URL=${{ Postgres.DATABASE_URL }}
   NODE_ENV=production
   PORT=3000
   LOG_LEVEL=info
