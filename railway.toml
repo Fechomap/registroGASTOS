@@ -1,6 +1,6 @@
 [build]
 builder = "railpack"
-buildCommand = "pnpm install --frozen-lockfile && pnpm run db:generate && pnpm --filter @financial-bot/database run db:migrate:deploy && pnpm run build"
+buildCommand = "pnpm install --frozen-lockfile && pnpm run db:generate && pnpm run build"
 watchPaths = ["apps/telegram-bot/**", "packages/**"]
 
 [railpack]
@@ -8,7 +8,7 @@ nodeVersion = "20"
 packageManager = "pnpm"
 
 [deploy]
-startCommand = "node apps/telegram-bot/dist/index.js"
+startCommand = "cd packages/database && npx prisma migrate deploy && cd ../.. && node apps/telegram-bot/dist/index.js"
 restartPolicyType = "always"
 
 [env]
