@@ -77,7 +77,7 @@ export async function movementsCommand(ctx: CommandContext<MyContext>) {
     // Listar movimientos
     movements.forEach((movement, index) => {
       const typeIcon = movement.type === 'EXPENSE' ? '💸' : '💰';
-      const amount = formatCurrency(movement.amount);
+      const amount = formatCurrency(Number(movement.amount));
       const date = formatDate(movement.date, 'short');
       
       message += 
@@ -124,7 +124,7 @@ export async function movementsCommand(ctx: CommandContext<MyContext>) {
 
     await ctx.reply(message, { 
       parse_mode: 'HTML',
-      disable_web_page_preview: true,
+      link_preview_options: { is_disabled: true },
     });
 
     // Log de la actividad

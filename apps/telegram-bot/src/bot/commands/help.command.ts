@@ -77,6 +77,6 @@ export async function helpCommand(ctx: CommandContext<MyContext>) {
 
   await ctx.reply(helpMessage, { 
     parse_mode: 'HTML',
-    disable_web_page_preview: true,
+    link_preview_options: { is_disabled: true },
   });
 }

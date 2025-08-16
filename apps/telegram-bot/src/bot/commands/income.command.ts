@@ -89,7 +89,7 @@ export async function incomeCommand(ctx: CommandContext<MyContext>) {
     const confirmationMessage = 
       '✅ <b>Ingreso registrado exitosamente</b>\n\n' +
       `📌 <b>Folio:</b> <code>${movement.folio}</code>\n` +
-      `💰 <b>Monto:</b> ${formatCurrency(movement.amount)} MXN\n` +
+      `💰 <b>Monto:</b> ${formatCurrency(Number(movement.amount))} MXN\n` +
       `📝 <b>Descripción:</b> ${movement.description}\n` +
       `📅 <b>Fecha:</b> ${new Date().toLocaleDateString('es-MX')}\n` +
       `👤 <b>Registrado por:</b> ${user.firstName}`;

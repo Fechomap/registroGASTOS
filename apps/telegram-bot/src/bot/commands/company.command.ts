@@ -96,7 +96,7 @@ export async function companyCommand(ctx: CommandContext<MyContext>) {
 
     await ctx.reply(message, { 
       parse_mode: 'HTML',
-      disable_web_page_preview: true,
+      link_preview_options: { is_disabled: true },
     });
 
     // Log de la actividad

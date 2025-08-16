@@ -1,5 +1,7 @@
-import { User, Prisma, UserRole } from '@prisma/client';
+import { User, Company, Prisma, UserRole } from '@prisma/client';
 import prisma from '../client';
+
+export type UserWithCompany = User & { company: Company };
 
 export class UserRepository {
   async create(data: Prisma.UserCreateInput): Promise<User> {
@@ -15,14 +17,14 @@ export class UserRepository {
     });
   }
 
-  async findByTelegramId(telegramId: string): Promise<User | null> {
+  async findByTelegramId(telegramId: string): Promise<UserWithCompany | null> {
     return prisma.user.findUnique({
       where: { telegramId },
       include: { company: true },
     });
   }
 
-  async findByChatId(chatId: string): Promise<User | null> {
+  async findByChatId(chatId: string): Promise<UserWithCompany | null> {
     return prisma.user.findUnique({
       where: { chatId },
       include: { company: true },

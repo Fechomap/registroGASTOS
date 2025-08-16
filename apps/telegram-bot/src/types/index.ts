@@ -1,11 +1,11 @@
 import { Context, SessionFlavor } from 'grammy';
 import { ConversationFlavor } from '@grammyjs/conversations';
 import { HydrateFlavor } from '@grammyjs/hydrate';
-import { User, Company } from '@financial-bot/database';
+import { User, Company, UserWithCompany } from '@financial-bot/database';
 
 // Datos de sesión
 export interface SessionData {
-  user?: User & { company: Company };
+  user?: UserWithCompany;
   conversationData?: Record<string, unknown>;
 }
 

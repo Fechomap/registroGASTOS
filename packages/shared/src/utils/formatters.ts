@@ -202,8 +202,8 @@ export function formatSuccess(message: string): string {
  */
 export function formatUserInfo(user: {
   firstName: string;
-  lastName?: string;
-  username?: string;
+  lastName?: string | null;
+  username?: string | null;
 }): string {
   let name = user.firstName;
   

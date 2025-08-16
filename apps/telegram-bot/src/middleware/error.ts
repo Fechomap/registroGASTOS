@@ -52,7 +52,7 @@ async function handleBotError(ctx: MyContext, error: unknown) {
   try {
     await ctx.reply(userMessage, {
       parse_mode: 'HTML',
-      disable_web_page_preview: true,
+      link_preview_options: { is_disabled: true },
     });
   } catch (replyError) {
     logger.error('Error sending error message to user:', replyError);

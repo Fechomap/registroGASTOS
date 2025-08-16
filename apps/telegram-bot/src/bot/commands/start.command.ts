@@ -33,7 +33,7 @@ export async function startCommand(ctx: CommandContext<MyContext>) {
       }
 
       // Guardar usuario en sesión
-      ctx.session.user = { ...user, company: user.company };
+      ctx.session.user = user;
 
       const welcomeMessage = 
         `${BOT_MESSAGES.WELCOME}\n\n` +
@@ -67,7 +67,7 @@ export async function startCommand(ctx: CommandContext<MyContext>) {
 
       await ctx.reply(instructions, { 
         parse_mode: 'HTML',
-        disable_web_page_preview: true,
+        link_preview_options: { is_disabled: true },
       });
 
       logger.info('New user attempted to start bot', {

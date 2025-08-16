@@ -18,7 +18,7 @@ export async function profileCommand(ctx: CommandContext<MyContext>) {
     // Obtener estadísticas del usuario
     const stats = await getUserStats(user.id, user.companyId);
     
-    const profileMessage = 
+    let profileMessage = 
       '👤 <b>Mi Perfil</b>\n\n' +
       
       `📝 <b>Información personal:</b>\n` +
