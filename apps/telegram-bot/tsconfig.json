@@ -1,0 +1,26 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "baseUrl": "./src",
+    "paths": {
+      "@/*": ["./*"],
+      "@financial-bot/core": ["../../packages/core/src"],
+      "@financial-bot/database": ["../../packages/database/src"],
+      "@financial-bot/ai-processor": ["../../packages/ai-processor/src"],
+      "@financial-bot/storage": ["../../packages/storage/src"],
+      "@financial-bot/reports": ["../../packages/reports/src"],
+      "@financial-bot/shared": ["../../packages/shared/src"]
+    }
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ]
+}
