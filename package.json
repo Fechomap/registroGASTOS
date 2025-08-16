@@ -12,7 +12,8 @@
   "packageManager": "pnpm@8.15.1",
   "scripts": {
     "dev": "turbo run dev",
-    "build": "turbo run build",
+    "build": "turbo run db:generate && turbo run build",
+    "db:generate": "turbo run db:generate",
     "start:prod": "node dist/apps/telegram-bot/src/index.js",
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint:fix",

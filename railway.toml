@@ -1,5 +1,6 @@
 [build]
 builder = "railpack"
+buildCommand = "pnpm install --frozen-lockfile && pnpm run db:generate && pnpm run build"
 watchPaths = ["apps/telegram-bot/**", "packages/**"]
 
 [deploy]
