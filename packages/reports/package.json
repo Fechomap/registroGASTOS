@@ -1,0 +1,30 @@
+{
+  "name": "@financial-bot/reports",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Generación de reportes PDF y Excel",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "jest",
+    "test:ci": "jest --ci --coverage",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@financial-bot/shared": "workspace:*",
+    "exceljs": "^4.4.0",
+    "pdfkit": "^0.14.0",
+    "puppeteer": "^21.6.1"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.11",
+    "@types/pdfkit": "^0.12.12",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1"
+  }
+}

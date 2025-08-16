@@ -1,0 +1,173 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  OPERATOR
+}
+
+enum MovementType {
+  INCOME
+  EXPENSE
+}
+
+enum ProcessingStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model Company {
+  id            String         @id @default(cuid())
+  name          String
+  email         String
+  phone         String
+  settings      Json           @default("{}")
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  
+  users         User[]
+  categories    Category[]
+  movements     Movement[]
+  notifications Notification[]
+  
+  @@index([isActive])
+  @@map("companies")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  telegramId    String         @unique
+  chatId        String         @unique
+  companyId     String
+  firstName     String
+  lastName      String?
+  username      String?
+  role          UserRole       @default(OPERATOR)
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  
+  company       Company        @relation(fields: [companyId], references: [id])
+  movements     Movement[]
+  auditLogs     AuditLog[]
+  
+  @@index([companyId])
+  @@index([telegramId])
+  @@map("users")
+}
+
+model Category {
+  id            String         @id @default(cuid())
+  companyId     String
+  name          String
+  icon          String?
+  color         String?
+  parentId      String?
+  order         Int            @default(0)
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  
+  company       Company        @relation(fields: [companyId], references: [id])
+  parent        Category?      @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children      Category[]     @relation("CategoryHierarchy")
+  movements     Movement[]
+  
+  @@unique([companyId, name, parentId])
+  @@index([companyId])
+  @@map("categories")
+}
+
+model Movement {
+  id            String         @id @default(cuid())
+  companyId     String
+  userId        String
+  folio         String         @unique
+  type          MovementType
+  amount        Decimal        @db.Decimal(12, 2)
+  currency      String         @default("MXN")
+  date          DateTime
+  categoryId    String?
+  description   String
+  vendorName    String?
+  invoiceNumber String?
+  metadata      Json           @default("{}")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  
+  company       Company        @relation(fields: [companyId], references: [id])
+  user          User           @relation(fields: [userId], references: [id])
+  category      Category?      @relation(fields: [categoryId], references: [id])
+  attachments   Attachment[]
+  auditLogs     AuditLog[]
+  
+  @@index([companyId, date])
+  @@index([companyId, userId])
+  @@index([folio])
+  @@map("movements")
+}
+
+model Attachment {
+  id            String         @id @default(cuid())
+  movementId    String
+  fileUrl       String
+  fileName      String
+  fileSize      Int
+  mimeType      String
+  status        ProcessingStatus @default(PENDING)
+  aiData        Json?
+  processedAt   DateTime?
+  createdAt     DateTime       @default(now())
+  
+  movement      Movement       @relation(fields: [movementId], references: [id], onDelete: Cascade)
+  
+  @@index([movementId])
+  @@map("attachments")
+}
+
+model AuditLog {
+  id            String         @id @default(cuid())
+  companyId     String
+  userId        String
+  action        String         // CREATE, UPDATE, DELETE
+  entityType    String         // Movement, Category, User
+  entityId      String
+  oldData       Json?
+  newData       Json?
+  metadata      Json?
+  createdAt     DateTime       @default(now())
+  
+  user          User           @relation(fields: [userId], references: [id])
+  
+  @@index([companyId, createdAt])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+model Notification {
+  id            String         @id @default(cuid())
+  companyId     String
+  type          String         // INSTANT, DAILY_SUMMARY
+  recipientId   String
+  content       String
+  sentAt        DateTime?
+  metadata      Json?
+  createdAt     DateTime       @default(now())
+  
+  company       Company        @relation(fields: [companyId], references: [id])
+  
+  @@index([companyId, type])
+  @@map("notifications")
+}
