@@ -21,7 +21,8 @@ RUN pnpm install --frozen-lockfile
 # Copy source code
 COPY . .
 
-# Build
+# Generate Prisma types and build
+RUN npx prisma generate
 RUN pnpm run build
 
 # Expose port
