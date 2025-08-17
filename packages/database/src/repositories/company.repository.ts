@@ -96,6 +96,19 @@ export class CompanyRepository {
     const company = await this.findById(companyId);
     return company?.status === CompanyStatus.APPROVED && company.isActive;
   }
+
+  /**
+   * Buscar empresa pendiente por usuario que la solicitó
+   */
+  async findPendingByUser(telegramId: string): Promise<Company | null> {
+    return prisma.company.findFirst({
+      where: {
+        requestedBy: telegramId,
+        status: CompanyStatus.PENDING,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
 }
 
 export const companyRepository = new CompanyRepository();

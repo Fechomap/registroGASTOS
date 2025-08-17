@@ -1,17 +1,30 @@
 import { InlineKeyboard } from 'grammy';
 
 /**
- * Menú para seleccionar método de registro de gasto
+ * Menú para seleccionar tipo de gasto (Empresa/Personal)
  */
-export function createExpenseMethodMenu() {
+export function createExpenseTypeMenu() {
   return new InlineKeyboard()
-    .text('✍️ Registro Manual', 'expense_manual')
-    .text('📷 Desde Foto', 'expense_photo')
+    .text('🏢 Empresa', 'expense_type_company')
+    .text('👤 Personal', 'expense_type_personal')
     .row()
-    .text('🎤 Por Voz', 'expense_voice')
-    .text('📋 Paso a Paso', 'expense_wizard')
-    .row()
-    .text('◀️ Menú Principal', 'main_menu');
+    .text('◀️ Cancelar', 'main_menu');
+}
+
+/**
+ * Menú para seleccionar empresa (cuando hay múltiples)
+ */
+export function createCompanySelectMenu(companies: Array<{id: string, name: string}>) {
+  const keyboard = new InlineKeyboard();
+  
+  // Agregar empresas, máximo 8 para no sobrecargar el menú
+  companies.slice(0, 8).forEach(company => {
+    keyboard.text(`🏢 ${company.name}`, `expense_company_${company.id}`).row();
+  });
+  
+  keyboard.text('◀️ Volver', 'expense_start');
+  
+  return keyboard;
 }
 
 /**
@@ -94,11 +107,34 @@ export function getExpenseSummaryMessage(expense: any) {
 }
 
 /**
+ * Mensaje para selección de tipo de gasto
+ */
+export function getExpenseTypeMessage() {
+  return `💰 **Registrar Nuevo Gasto**\n\n` +
+    `¿Dónde deseas registrar el gasto?\n\n` +
+    `🏢 **Empresa:** Gasto empresarial visible para administradores\n` +
+    `👤 **Personal:** Gasto privado solo visible para ti`;
+}
+
+/**
+ * Mensaje para selección de empresa
+ */
+export function getCompanySelectMessage(companies: Array<{id: string, name: string}>) {
+  return `🏢 **Seleccionar Empresa**\n\n` +
+    `¿En qué empresa registrarás el gasto?\n` +
+    `📊 **Empresas disponibles:** ${companies.length}`;
+}
+
+/**
  * Mensaje de éxito al registrar gasto
  */
-export function getExpenseSuccessMessage(folio: string, amount: number) {
-  return `✅ **¡Gasto Registrado Exitosamente!**\n\n` +
+export function getExpenseSuccessMessage(folio: string, amount: number, isPersonal: boolean = false) {
+  const typeIcon = isPersonal ? '👤' : '🏢';
+  const typeText = isPersonal ? 'Personal' : 'Empresarial';
+  
+  return `✅ **¡Gasto ${typeText} Registrado!**\n\n` +
+    `${typeIcon} **Tipo:** ${typeText}\n` +
     `📌 **Folio:** ${folio}\n` +
     `💰 **Monto:** $${amount} MXN\n\n` +
-    `El administrador ha sido notificado.`;
+    `${isPersonal ? 'Gasto registrado en tu cuenta personal.' : 'El administrador ha sido notificado.'}`;
 }

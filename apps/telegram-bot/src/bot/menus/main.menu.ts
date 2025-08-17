@@ -6,7 +6,7 @@ import { InlineKeyboard } from 'grammy';
 export function createMainMenu(userRole: 'ADMIN' | 'OPERATOR') {
   const keyboard = new InlineKeyboard();
 
-  // Opciones para todos los usuarios
+  // Opciones principales para todos los usuarios
   keyboard
     .text('💰 Registrar Gasto', 'main_expense')
     .text('📊 Ver Movimientos', 'main_movements')
@@ -34,7 +34,11 @@ export function createMainMenu(userRole: 'ADMIN' | 'OPERATOR') {
 /**
  * Mensaje de bienvenida con menú principal
  */
-export function getMainMenuMessage(userName: string, userRole: string, companyName: string) {
+export function getMainMenuMessage(
+  userName: string, 
+  userRole: string, 
+  companyName: string
+) {
   const roleText = userRole === 'ADMIN' ? '👑 Administrador' : '👤 Operador';
   
   return `🏢 **${companyName}**\n\n` +
@@ -104,3 +108,4 @@ export function createProfileMenu() {
     .row()
     .text('◀️ Menú Principal', 'main_menu');
 }
+

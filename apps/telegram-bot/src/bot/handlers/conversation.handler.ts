@@ -1,13 +1,21 @@
 import { Context } from 'grammy';
 import { MyContext, RegisterFlowData } from '../../types';
 import { InlineKeyboard } from 'grammy';
-import { movementRepository, categoryRepository } from '@financial-bot/database';
+import { movementRepository, categoryRepository, personalMovementRepository, personalCategoryRepository, userRepository } from '@financial-bot/database';
+import { createExpenseTypeMenu, getExpenseTypeMessage, createCompanySelectMenu, getCompanySelectMessage } from '../menus/expense.menu';
 
 /**
  * Manejar mensajes durante conversaciones activas
  */
 export async function handleConversationMessage(ctx: Context & MyContext) {
   const conversationData = ctx.session.conversationData;
+  
+  // Manejar registro de empresa
+  if (conversationData?.companyRegistration) {
+    const { handleCompanyRegistrationInput } = await import('./company-setup.handler');
+    await handleCompanyRegistrationInput(ctx);
+    return;
+  }
   
   if (!conversationData || !conversationData.registerFlow) {
     // No hay conversación activa, respuesta por defecto
@@ -22,6 +30,12 @@ export async function handleConversationMessage(ctx: Context & MyContext) {
   const registerFlow = conversationData.registerFlow as RegisterFlowData;
   
   switch (registerFlow.step) {
+    case 'expense_type':
+      await handleExpenseTypeStep(ctx);
+      break;
+    case 'company_select':
+      await handleCompanySelectStep(ctx);
+      break;
     case 'amount':
       await handleAmountStep(ctx, registerFlow);
       break;
@@ -37,7 +51,246 @@ export async function handleConversationMessage(ctx: Context & MyContext) {
 }
 
 /**
- * Paso 1: Manejar monto
+ * Iniciar flujo de registro de gasto
+ */
+export async function startExpenseFlow(ctx: Context & MyContext) {
+  const user = ctx.session.user;
+  
+  if (!user) {
+    await ctx.reply('❌ Error de autenticación.');
+    return;
+  }
+
+  // Para operadores, verificar que tengan empresa
+  if (user.role === 'OPERATOR') {
+    // Verificar que el operador tenga acceso a empresas
+    try {
+      const userCompanies = await userRepository.getUserCompanies(user.id);
+      
+      if (userCompanies.length === 0) {
+        await ctx.reply(
+          `👤 **Hola ${user.firstName}**\n\n` +
+          `❌ **No tienes acceso a ninguna empresa**\n\n` +
+          `Como operador, necesitas que un administrador te invite a una empresa.\n\n` +
+          `💡 **Contacta a tu administrador** para obtener acceso.`,
+          {
+            parse_mode: 'Markdown',
+            reply_markup: new InlineKeyboard()
+              .text('👤 Mi Perfil', 'main_profile')
+              .text('❓ Ayuda', 'main_help')
+          }
+        );
+        return;
+      }
+
+      // Si tiene una empresa, usar esa
+      const companyId = userCompanies[0].companyId;
+      
+      const registerFlow: RegisterFlowData = {
+        step: 'amount',
+        expenseType: 'COMPANY',
+        companyId: companyId
+      };
+      
+      ctx.session.conversationData = { registerFlow };
+      
+      await ctx.reply(
+        `🏢 **Registro de Gasto Empresarial**\n` +
+        `**Empresa:** ${userCompanies[0].company.name}\n\n` +
+        `💰 **Paso 1:** ¿Cuánto gastaste?\n\n` +
+        `Escribe solo el monto (ejemplo: 150 o 50.5)`,
+        {
+          reply_markup: new InlineKeyboard().text('❌ Cancelar', 'expense_cancel'),
+          parse_mode: 'Markdown'
+        }
+      );
+      return;
+      
+    } catch (error) {
+      console.error('Error getting user companies for operator:', error);
+      await ctx.reply('❌ Error al verificar empresas. Intenta nuevamente.');
+      return;
+    }
+  }
+
+  // Para administradores, mostrar opciones de tipo de gasto
+  const registerFlow: RegisterFlowData = {
+    step: 'expense_type'
+  };
+  
+  ctx.session.conversationData = { registerFlow };
+  
+  await ctx.reply(getExpenseTypeMessage(), {
+    reply_markup: createExpenseTypeMenu(),
+    parse_mode: 'Markdown'
+  });
+}
+
+/**
+ * Manejar selección de tipo de gasto (solo se llama si hay texto en este paso)
+ */
+async function handleExpenseTypeStep(ctx: Context & MyContext) {
+  await ctx.reply(
+    '💰 **Esperando selección de tipo**\n\n' +
+    'Por favor selecciona una opción usando los botones de arriba.',
+    { parse_mode: 'Markdown' }
+  );
+}
+
+/**
+ * Manejar selección de empresa (solo se llama si hay texto en este paso)
+ */
+async function handleCompanySelectStep(ctx: Context & MyContext) {
+  await ctx.reply(
+    '🏢 **Esperando selección de empresa**\n\n' +
+    'Por favor selecciona una empresa usando los botones de arriba.',
+    { parse_mode: 'Markdown' }
+  );
+}
+
+/**
+ * Procesar selección de tipo de gasto (llamado desde callback)
+ */
+export async function processExpenseTypeSelection(ctx: Context & MyContext, expenseType: 'COMPANY' | 'PERSONAL') {
+  const registerFlow = ctx.session.conversationData?.registerFlow as RegisterFlowData;
+  
+  if (!registerFlow) {
+    await ctx.reply('❌ Error en el flujo. Intenta nuevamente.');
+    return;
+  }
+
+  registerFlow.expenseType = expenseType;
+
+  if (expenseType === 'PERSONAL') {
+    // Gasto personal, ir directo a monto
+    registerFlow.step = 'amount';
+    ctx.session.conversationData = { registerFlow };
+    
+    await ctx.editMessageText(
+      `👤 **Registro de Gasto Personal**\n\n` +
+      `💰 **Paso 1:** ¿Cuánto gastaste?\n\n` +
+      `Escribe solo el monto (ejemplo: 150 o 50.5)`,
+      {
+        reply_markup: new InlineKeyboard().text('❌ Cancelar', 'expense_cancel'),
+        parse_mode: 'Markdown'
+      }
+    );
+  } else {
+    // Gasto de empresa, verificar si hay múltiples empresas
+    const user = ctx.session.user;
+    if (!user) {
+      await ctx.reply('❌ Error de autenticación.');
+      return;
+    }
+
+    try {
+      const userCompanies = await userRepository.getUserCompanies(user.id);
+      
+      if (userCompanies.length === 0) {
+        // Mostrar menú para registrar empresa
+        const { createNoCompaniesMenu, getNoCompaniesMessage } = await import('../menus/company-setup.menu');
+        
+        await ctx.editMessageText(
+          getNoCompaniesMessage(user.firstName),
+          {
+            parse_mode: 'Markdown',
+            reply_markup: createNoCompaniesMenu()
+          }
+        );
+        return;
+      }
+      
+      if (userCompanies.length === 1) {
+        // Solo una empresa, ir directo a monto
+        registerFlow.companyId = userCompanies[0].companyId;
+        registerFlow.step = 'amount';
+        ctx.session.conversationData = { registerFlow };
+        
+        await ctx.editMessageText(
+          `🏢 **Registro de Gasto Empresarial**\n` +
+          `**Empresa:** ${userCompanies[0].company.name}\n\n` +
+          `💰 **Paso 1:** ¿Cuánto gastaste?\n\n` +
+          `Escribe solo el monto (ejemplo: 150 o 50.5)`,
+          {
+            reply_markup: new InlineKeyboard().text('❌ Cancelar', 'expense_cancel'),
+            parse_mode: 'Markdown'
+          }
+        );
+      } else {
+        // Múltiples empresas, mostrar selector
+        registerFlow.step = 'company_select';
+        ctx.session.conversationData = { registerFlow };
+        
+        const companies = userCompanies.map((uc: any) => ({
+          id: uc.companyId,
+          name: uc.company.name
+        }));
+        
+        await ctx.editMessageText(
+          getCompanySelectMessage(companies),
+          {
+            reply_markup: createCompanySelectMenu(companies),
+            parse_mode: 'Markdown'
+          }
+        );
+      }
+    } catch (error) {
+      console.error('Error getting user companies:', error);
+      await ctx.reply('❌ Error al obtener empresas. Intenta nuevamente.');
+    }
+  }
+}
+
+/**
+ * Procesar selección de empresa (llamado desde callback)
+ */
+export async function processCompanySelection(ctx: Context & MyContext, companyId: string) {
+  const registerFlow = ctx.session.conversationData?.registerFlow as RegisterFlowData;
+  
+  if (!registerFlow) {
+    await ctx.reply('❌ Error en el flujo. Intenta nuevamente.');
+    return;
+  }
+
+  try {
+    // Verificar que el usuario tenga acceso a esta empresa
+    const user = ctx.session.user;
+    if (!user) {
+      await ctx.reply('❌ Error de autenticación.');
+      return;
+    }
+
+    const userCompanies = await userRepository.getUserCompanies(user.id);
+    const selectedCompany = userCompanies.find((uc: any) => uc.companyId === companyId);
+    
+    if (!selectedCompany) {
+      await ctx.answerCallbackQuery('❌ No tienes acceso a esta empresa');
+      return;
+    }
+
+    registerFlow.companyId = companyId;
+    registerFlow.step = 'amount';
+    ctx.session.conversationData = { registerFlow };
+    
+    await ctx.editMessageText(
+      `🏢 **Registro de Gasto Empresarial**\n` +
+      `**Empresa:** ${selectedCompany.company.name}\n\n` +
+      `💰 **Paso 1:** ¿Cuánto gastaste?\n\n` +
+      `Escribe solo el monto (ejemplo: 150 o 50.5)`,
+      {
+        reply_markup: new InlineKeyboard().text('❌ Cancelar', 'expense_cancel'),
+        parse_mode: 'Markdown'
+      }
+    );
+
+  } catch (error) {
+    console.error('Error processing company selection:', error);
+    await ctx.reply('❌ Error al seleccionar empresa. Intenta nuevamente.');
+  }
+}
+
+/**
+ * Manejar monto
  */
 async function handleAmountStep(ctx: Context & MyContext, registerFlow: RegisterFlowData) {
   const text = ctx.message?.text;
@@ -120,7 +373,10 @@ async function showCategorySelection(ctx: Context & MyContext, registerFlow: Reg
       return;
     }
 
-    const categories = await categoryRepository.findByCompany(user.companyId);
+    // Obtener categorías según el tipo de gasto
+    const categories = registerFlow.expenseType === 'PERSONAL'
+      ? await personalCategoryRepository.findByUser(user.id)
+      : await categoryRepository.findByCompany(registerFlow.companyId || user.companyId);
     
     const keyboard = new InlineKeyboard();
     
@@ -244,30 +500,54 @@ export async function saveExpense(ctx: Context & MyContext) {
   }
 
   try {
-    // Generar folio único
-    const folio = await movementRepository.generateFolio(user.companyId);
-    
-    // Crear el movimiento
-    const movement = await movementRepository.create({
-      company: { connect: { id: user.companyId } },
-      user: { connect: { id: user.id } },
-      folio,
-      type: 'EXPENSE',
-      amount: registerFlow.amount,
-      description: registerFlow.description,
-      category: registerFlow.categoryId ? { connect: { id: registerFlow.categoryId } } : undefined,
-      date: new Date(),
-      currency: 'MXN'
-    });
+    let movement: any;
+    let folio: string;
+    const isPersonal = registerFlow.expenseType === 'PERSONAL';
+
+    if (isPersonal) {
+      // Crear gasto personal
+      folio = await personalMovementRepository.generateFolio(user.id);
+      
+      movement = await personalMovementRepository.create({
+        user: { connect: { id: user.id } },
+        folio,
+        type: 'EXPENSE',
+        amount: registerFlow.amount,
+        description: registerFlow.description,
+        category: registerFlow.categoryId ? { connect: { id: registerFlow.categoryId } } : undefined,
+        date: new Date(),
+        currency: 'MXN'
+      });
+    } else {
+      // Crear gasto de empresa
+      const companyId = registerFlow.companyId || user.companyId;
+      folio = await movementRepository.generateFolio(companyId);
+      
+      movement = await movementRepository.create({
+        company: { connect: { id: companyId } },
+        user: { connect: { id: user.id } },
+        folio,
+        type: 'EXPENSE',
+        amount: registerFlow.amount,
+        description: registerFlow.description,
+        category: registerFlow.categoryId ? { connect: { id: registerFlow.categoryId } } : undefined,
+        date: new Date(),
+        currency: 'MXN'
+      });
+    }
 
     // Limpiar la conversación
     ctx.session.conversationData = {};
 
-    const message = `🎉 **¡Gasto Registrado Exitosamente!**\n\n` +
+    const typeIcon = isPersonal ? '👤' : '🏢';
+    const typeText = isPersonal ? 'Personal' : 'Empresarial';
+    
+    const message = `🎉 **¡Gasto ${typeText} Registrado!**\n\n` +
+      `${typeIcon} **Tipo:** ${typeText}\n` +
       `📌 **Folio:** ${movement.folio}\n` +
       `💰 **Monto:** $${registerFlow.amount} MXN\n` +
       `📝 **Descripción:** ${registerFlow.description}\n\n` +
-      `El administrador ha sido notificado.`;
+      `${isPersonal ? 'Gasto registrado en tu cuenta personal.' : 'El administrador ha sido notificado.'}`;
 
     await ctx.reply(message, {
       reply_markup: new InlineKeyboard()

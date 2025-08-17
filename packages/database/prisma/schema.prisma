@@ -34,6 +34,7 @@ enum CompanyStatus {
   SUSPENDED
 }
 
+
 model Company {
   id            String         @id @default(cuid())
   name          String
@@ -51,6 +52,7 @@ model Company {
   updatedAt     DateTime       @updatedAt
   
   users         User[]
+  userCompanies UserCompany[]
   categories    Category[]
   movements     Movement[]
   notifications Notification[]
@@ -75,21 +77,24 @@ model SystemAdmin {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  telegramId    String         @unique
-  chatId        String         @unique
-  companyId     String
-  firstName     String
-  lastName      String?
-  username      String?
-  role          UserRole       @default(OPERATOR)
-  isActive      Boolean        @default(true)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id               String         @id @default(cuid())
+  telegramId       String         @unique
+  chatId           String         @unique
+  companyId        String
+  firstName        String
+  lastName         String?
+  username         String?
+  role             UserRole       @default(OPERATOR)
+  isActive         Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
   
-  company       Company        @relation(fields: [companyId], references: [id])
-  movements     Movement[]
-  auditLogs     AuditLog[]
+  company          Company        @relation(fields: [companyId], references: [id])
+  userCompanies    UserCompany[]
+  movements        Movement[]
+  personalMovements PersonalMovement[]
+  personalCategories PersonalCategory[]
+  auditLogs        AuditLog[]
   
   @@index([companyId])
   @@index([telegramId])
@@ -199,4 +204,87 @@ model Notification {
   
   @@index([companyId, type])
   @@map("notifications")
+}
+
+model UserCompany {
+  id          String       @id @default(cuid())
+  userId      String
+  companyId   String
+  role        UserRole     @default(OPERATOR)
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, companyId])
+  @@index([userId])
+  @@index([companyId])
+  @@map("user_companies")
+}
+
+model PersonalCategory {
+  id            String               @id @default(cuid())
+  userId        String
+  name          String
+  icon          String?
+  color         String?
+  parentId      String?
+  order         Int                  @default(0)
+  isActive      Boolean              @default(true)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent        PersonalCategory?    @relation("PersonalCategoryHierarchy", fields: [parentId], references: [id])
+  children      PersonalCategory[]   @relation("PersonalCategoryHierarchy")
+  movements     PersonalMovement[]
+
+  @@unique([userId, name, parentId])
+  @@index([userId])
+  @@map("personal_categories")
+}
+
+model PersonalMovement {
+  id            String               @id @default(cuid())
+  userId        String
+  folio         String               @unique
+  type          MovementType
+  amount        Decimal              @db.Decimal(12, 2)
+  currency      String               @default("MXN")
+  date          DateTime
+  categoryId    String?
+  description   String
+  vendorName    String?
+  invoiceNumber String?
+  metadata      Json                 @default("{}")
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category      PersonalCategory?    @relation(fields: [categoryId], references: [id])
+  attachments   PersonalAttachment[]
+
+  @@index([userId, date])
+  @@index([folio])
+  @@map("personal_movements")
+}
+
+model PersonalAttachment {
+  id                  String           @id @default(cuid())
+  personalMovementId  String
+  fileUrl             String
+  fileName            String
+  fileSize            Int
+  mimeType            String
+  status              ProcessingStatus @default(PENDING)
+  aiData              Json?
+  processedAt         DateTime?
+  createdAt           DateTime         @default(now())
+
+  personalMovement    PersonalMovement @relation(fields: [personalMovementId], references: [id], onDelete: Cascade)
+
+  @@index([personalMovementId])
+  @@map("personal_attachments")
 }

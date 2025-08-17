@@ -1,6 +1,6 @@
 import { CallbackQueryContext } from 'grammy';
 import { MyContext } from '../../types';
-import { userRepository, companyRepository } from '@financial-bot/database';
+import { userRepository } from '@financial-bot/database';
 import { 
   createMainMenu, 
   getMainMenuMessage, 
@@ -9,8 +9,23 @@ import {
   createReportsMenu, 
   createProfileMenu 
 } from '../menus/main.menu';
-import { createExpenseMethodMenu } from '../menus/expense.menu';
-import { confirmExpense, saveExpense } from '../handlers/conversation.handler';
+import { 
+  handleMainExpenseCallback,
+  handleExpenseStartCallback,
+  handleExpenseTypeCallback,
+  handleExpenseCompanyCallback,
+  handleCategorySelectCallback,
+  handleExpenseConfirmSaveCallback,
+  handleExpenseCancelCallback,
+  handleMainMenuCallback
+} from './expense.callbacks';
+import {
+  handleCompanyHelp,
+  handleCompanyRegisterStart,
+  handleCompanyCheck,
+  handleCompanyConfirmRegister,
+  handleCompanySkipPhone
+} from '../handlers/company-setup.handler';
 
 /**
  * Handler principal para todos los callbacks del menú
@@ -21,10 +36,10 @@ export async function handleMenuCallback(ctx: CallbackQueryContext<MyContext>) {
   try {
     switch (data) {
       case 'main_menu':
-        await showMainMenu(ctx);
+        await handleMainMenuCallback(ctx);
         break;
       case 'main_expense':
-        await showExpenseMenu(ctx);
+        await handleMainExpenseCallback(ctx);
         break;
       case 'main_movements':
         await showMovements(ctx);
@@ -48,41 +63,55 @@ export async function handleMenuCallback(ctx: CallbackQueryContext<MyContext>) {
         await showCategoriesMenu(ctx);
         break;
       case 'main_refresh':
-        await showMainMenu(ctx);
+        await handleMainMenuCallback(ctx);
         break;
       
-      // Callbacks de expense
-      case 'expense_manual':
-        await handleExpenseManual(ctx);
+      // Nuevos callbacks de expense
+      case 'expense_start':
+        await handleExpenseStartCallback(ctx);
         break;
-      case 'expense_wizard':
-        await handleExpenseWizard(ctx);
-        break;
-      case 'expense_photo':
-        await handleExpensePhoto(ctx);
-        break;
-      case 'expense_voice':
-        await handleExpenseVoice(ctx);
-        break;
-      case 'expense_confirm':
-        await handleExpenseConfirm(ctx);
-        break;
-      case 'expense_edit':
-        await handleExpenseEdit(ctx);
+      case 'expense_type_company':
+      case 'expense_type_personal':
+        await handleExpenseTypeCallback(ctx);
         break;
       case 'expense_cancel':
-        await handleExpenseCancel(ctx);
+        await handleExpenseCancelCallback(ctx);
         break;
       case 'expense_confirm_save':
-        await handleExpenseConfirmSave(ctx);
+        await handleExpenseConfirmSaveCallback(ctx);
+        break;
+
+      // Callbacks de empresa
+      case 'company_help':
+        await handleCompanyHelp(ctx);
+        break;
+      case 'company_register_start':
+        await handleCompanyRegisterStart(ctx);
+        break;
+      case 'company_check':
+      case 'company_check_status':
+        await handleCompanyCheck(ctx);
+        break;
+      case 'company_confirm_register':
+        await handleCompanyConfirmRegister(ctx);
+        break;
+      case 'company_skip_phone':
+        await handleCompanySkipPhone(ctx);
         break;
         
       default:
         // Manejar selección de categorías
         if (data?.startsWith('category_select_')) {
-          await handleCategorySelection(ctx);
+          await handleCategorySelectCallback(ctx);
           return;
         }
+        
+        // Manejar selección de empresa
+        if (data?.startsWith('expense_company_')) {
+          await handleExpenseCompanyCallback(ctx);
+          return;
+        }
+        
         await ctx.answerCallbackQuery('Opción no reconocida');
     }
   } catch (error) {
@@ -108,46 +137,39 @@ async function showMainMenu(ctx: CallbackQueryContext<MyContext>) {
     return;
   }
 
-  const company = await companyRepository.findById(user.companyId);
-  if (!company) {
-    await ctx.answerCallbackQuery('❌ Empresa no encontrada');
-    return;
-  }
-
-  const keyboard = createMainMenu(user.role);
-  const message = getMainMenuMessage(user.firstName, user.role, company.name);
-
-  await ctx.editMessageText(message, {
-    reply_markup: keyboard,
-    parse_mode: 'Markdown'
-  });
-  await ctx.answerCallbackQuery();
-}
-
-/**
- * Registrar gasto - DIRECTAMENTE conversacional
- */
-async function showExpenseMenu(ctx: CallbackQueryContext<MyContext>) {
-  // Inicializar el flujo de registro INMEDIATAMENTE
-  ctx.session.conversationData = {
-    registerFlow: {
-      step: 'amount',
-      type: 'EXPENSE'
+  try {
+    // Verificar si el usuario tiene empresas
+    const userCompanies = await userRepository.getUserCompanies(user.id);
+    
+    if (userCompanies.length === 0) {
+      // No tiene empresas, mostrar menú de registro
+      const { createNoCompaniesMenu, getNoCompaniesMessage } = await import('../menus/company-setup.menu');
+      
+      await ctx.editMessageText(getNoCompaniesMessage(user.firstName), {
+        reply_markup: createNoCompaniesMenu(),
+        parse_mode: 'Markdown'
+      });
+      await ctx.answerCallbackQuery();
+      return;
     }
-  };
 
-  const message = `💰 **Registro de Gasto - Paso 1 de 4**\n\n` +
-    `¿Cuánto gastaste?\n\n` +
-    `💡 Escribe solo el número (ejemplo: 150)`;
+    // Tiene empresas, mostrar menú normal
+    const currentCompany = userCompanies[0].company;
+    const keyboard = createMainMenu(user.role);
+    const message = getMainMenuMessage(user.firstName, user.role, currentCompany.name);
 
-  await ctx.editMessageText(message, {
-    reply_markup: { 
-      inline_keyboard: [[{ text: '❌ Cancelar', callback_data: 'expense_cancel' }]] 
-    },
-    parse_mode: 'Markdown'
-  });
-  await ctx.answerCallbackQuery();
+    await ctx.editMessageText(message, {
+      reply_markup: keyboard,
+      parse_mode: 'Markdown'
+    });
+    await ctx.answerCallbackQuery();
+
+  } catch (error) {
+    console.error('Error in showMainMenu:', error);
+    await ctx.answerCallbackQuery('❌ Error al cargar el menú');
+  }
 }
+
 
 /**
  * Mostrar movimientos del usuario
@@ -265,132 +287,3 @@ async function showCategoriesMenu(ctx: CallbackQueryContext<MyContext>) {
   });
 }
 
-/**
- * Handlers de expense callbacks
- */
-
-/**
- * Funciones legacy eliminadas - Ya no hay menú de métodos
- * Todo va directo al wizard conversacional
- */
-async function handleExpenseManual(ctx: CallbackQueryContext<MyContext>) {
-  // Redirigir al flujo principal
-  await showExpenseMenu(ctx);
-}
-
-async function handleExpenseWizard(ctx: CallbackQueryContext<MyContext>) {
-  // Redirigir al flujo principal
-  await showExpenseMenu(ctx);
-}
-
-/**
- * Registro desde foto
- */
-async function handleExpensePhoto(ctx: CallbackQueryContext<MyContext>) {
-  const message = `📷 **Registro Desde Foto**\n\n` +
-    `🚧 Esta función estará disponible en la **Fase 2**.\n\n` +
-    `**Funcionalidades futuras:**\n` +
-    `• Sube foto del ticket/factura\n` +
-    `• IA extrae automáticamente:\n` +
-    `  - Monto\n` +
-    `  - Fecha\n` +
-    `  - Establecimiento\n` +
-    `  - Número de factura\n` +
-    `• Confirmas y listo\n\n` +
-    `Mientras tanto, usa **Registro Manual**.`;
-
-  await ctx.editMessageText(message, {
-    reply_markup: { inline_keyboard: [[{ text: '◀️ Volver', callback_data: 'main_expense' }]] },
-    parse_mode: 'Markdown'
-  });
-  await ctx.answerCallbackQuery('🚧 Función en desarrollo - Fase 2');
-}
-
-/**
- * Registro por voz
- */
-async function handleExpenseVoice(ctx: CallbackQueryContext<MyContext>) {
-  const message = `🎤 **Registro Por Voz**\n\n` +
-    `🚧 Esta función estará disponible en la **Fase 4**.\n\n` +
-    `**Funcionalidades futuras:**\n` +
-    `• Graba mensaje de voz\n` +
-    `• IA transcribe y extrae:\n` +
-    `  - "Gasté 150 pesos en comida"\n` +
-    `  - Monto: $150\n` +
-    `  - Descripción: comida\n` +
-    `• Confirmas y listo\n\n` +
-    `Mientras tanto, usa **Registro Manual**.`;
-
-  await ctx.editMessageText(message, {
-    reply_markup: { inline_keyboard: [[{ text: '◀️ Volver', callback_data: 'main_expense' }]] },
-    parse_mode: 'Markdown'
-  });
-  await ctx.answerCallbackQuery('🚧 Función en desarrollo - Fase 4');
-}
-
-/**
- * Confirmar gasto
- */
-async function handleExpenseConfirm(ctx: CallbackQueryContext<MyContext>) {
-  await ctx.answerCallbackQuery('🚧 Función en desarrollo');
-  
-  const message = `✅ **Confirmar Gasto**\n\n` +
-    `🚧 Esta función está en desarrollo.\n` +
-    `Se implementará junto con el wizard paso a paso.`;
-
-  await ctx.editMessageText(message, {
-    reply_markup: { inline_keyboard: [[{ text: '◀️ Volver', callback_data: 'main_expense' }]] },
-    parse_mode: 'Markdown'
-  });
-}
-
-/**
- * Editar gasto
- */
-async function handleExpenseEdit(ctx: CallbackQueryContext<MyContext>) {
-  await ctx.answerCallbackQuery('🚧 Función en desarrollo');
-  
-  const message = `✏️ **Editar Gasto**\n\n` +
-    `🚧 Esta función está en desarrollo.\n` +
-    `Se implementará junto con el wizard paso a paso.`;
-
-  await ctx.editMessageText(message, {
-    reply_markup: { inline_keyboard: [[{ text: '◀️ Volver', callback_data: 'main_expense' }]] },
-    parse_mode: 'Markdown'
-  });
-}
-
-/**
- * Cancelar gasto
- */
-async function handleExpenseCancel(ctx: CallbackQueryContext<MyContext>) {
-  // Limpiar conversación
-  ctx.session.conversationData = {};
-  
-  await ctx.answerCallbackQuery('❌ Gasto cancelado');
-  
-  // Volver al menú principal
-  await showMainMenu(ctx);
-}
-
-/**
- * Manejar selección de categoría
- */
-async function handleCategorySelection(ctx: CallbackQueryContext<MyContext>) {
-  const data = ctx.callbackQuery.data;
-  
-  if (!data) return;
-  
-  const categoryId = data.replace('category_select_', '');
-  
-  await ctx.answerCallbackQuery();
-  await confirmExpense(ctx, categoryId);
-}
-
-/**
- * Confirmar y guardar gasto
- */
-async function handleExpenseConfirmSave(ctx: CallbackQueryContext<MyContext>) {
-  await ctx.answerCallbackQuery();
-  await saveExpense(ctx);
-}

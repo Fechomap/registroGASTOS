@@ -74,6 +74,24 @@ export class UserRepository {
       where: { id },
     });
   }
+
+  /**
+   * Obtener todas las empresas a las que pertenece un usuario
+   */
+  async getUserCompanies(userId: string) {
+    return prisma.userCompany.findMany({
+      where: { 
+        userId,
+        isActive: true 
+      },
+      include: {
+        company: true
+      },
+      orderBy: {
+        createdAt: 'asc'
+      }
+    });
+  }
 }
 
 export const userRepository = new UserRepository();

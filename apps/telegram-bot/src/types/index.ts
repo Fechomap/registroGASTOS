@@ -3,10 +3,22 @@ import { ConversationFlavor } from '@grammyjs/conversations';
 import { HydrateFlavor } from '@grammyjs/hydrate';
 import { User, Company, UserWithCompany } from '@financial-bot/database';
 
-// Datos de sesión
+// Datos de sesión 
 export interface SessionData {
   user?: UserWithCompany;
-  conversationData?: Record<string, unknown>;
+  conversationData?: {
+    registerFlow?: RegisterFlowData;
+    companyRegistration?: CompanyRegistrationData;
+    [key: string]: unknown;
+  };
+}
+
+// Datos para registro de empresa
+export interface CompanyRegistrationData {
+  step: 'name' | 'email' | 'phone' | 'confirm';
+  name?: string;
+  email?: string;
+  phone?: string;
 }
 
 // Contexto personalizado del bot
@@ -28,8 +40,9 @@ export interface QuickIncomeData {
 
 // Datos para el flujo de registro paso a paso
 export interface RegisterFlowData {
-  step: 'type' | 'amount' | 'description' | 'category' | 'date' | 'confirm';
-  type?: 'EXPENSE' | 'INCOME';
+  step: 'expense_type' | 'company_select' | 'amount' | 'description' | 'category' | 'confirm';
+  expenseType?: 'COMPANY' | 'PERSONAL'; // Nuevo campo para tipo de gasto
+  companyId?: string; // Empresa seleccionada (solo para gastos de empresa)
   amount?: number;
   description?: string;
   categoryId?: string;
@@ -116,6 +129,13 @@ export interface BotError extends Error {
   userId?: string;
   chatId?: string;
   command?: string;
+}
+
+// Datos para gestión de modo y compañías
+export interface CompanyModeData {
+  step: 'select_mode' | 'select_company' | 'confirm';
+  mode?: 'COMPANY' | 'PERSONAL';
+  companyId?: string;
 }
 
 export { User, Company };
