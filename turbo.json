@@ -1,10 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalDependencies": [
-    "**/.env.*local",
-    ".env",
-    "tsconfig.json"
-  ],
+  "globalDependencies": ["**/.env.*local", ".env", "tsconfig.json"],
   "pipeline": {
     "build": {
       "dependsOn": ["^build", "^db:generate"],

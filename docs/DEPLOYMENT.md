@@ -11,7 +11,7 @@
 # Bot de Producción
 TELEGRAM_BOT_TOKEN=${{ TELEGRAM_BOT_TOKEN }}
 
-# Base de Datos (Railway PostgreSQL)  
+# Base de Datos (Railway PostgreSQL)
 DATABASE_URL=${{ Postgres.DATABASE_URL }}
 
 # Proyecto Railway
@@ -25,6 +25,7 @@ URL: https://registrogastos.railway.app
 ## ⚡ DEPLOYMENT RÁPIDO
 
 ### 1. Pre-requisitos
+
 ```bash
 # 1. Railway CLI instalado
 npm install -g @railway/cli
@@ -37,6 +38,7 @@ railway list
 ```
 
 ### 2. Deploy Directo
+
 ```bash
 # 1. Clonar/actualizar repo
 git pull origin main
@@ -50,6 +52,7 @@ railway up
 ```
 
 ### 3. Verificación
+
 ```bash
 # Logs en tiempo real
 railway logs --follow
@@ -81,13 +84,14 @@ LOG_LEVEL=info
 
 # ✅ Railway (auto-configuradas)
 RAILWAY_ENVIRONMENT=production
-RAILWAY_PROJECT_NAME=GASTOS-SAAS  
+RAILWAY_PROJECT_NAME=GASTOS-SAAS
 RAILWAY_SERVICE_NAME=registroGASTOS
 ```
 
 ### Archivos de Configuración
 
 #### `railway.toml`
+
 ```toml
 [build]
 builder = "nixpacks"
@@ -103,6 +107,7 @@ LOG_LEVEL = "info"
 ```
 
 #### `Dockerfile` (optimizado)
+
 ```dockerfile
 FROM node:20-alpine
 WORKDIR /app
@@ -138,6 +143,7 @@ CMD ["node", "dist/apps/telegram-bot/src/index.js"]
 ```
 
 #### `.dockerignore`
+
 ```
 node_modules
 dist
@@ -155,42 +161,53 @@ coverage
 ## 🔍 TROUBLESHOOTING
 
 ### Error: "Command 'prisma' not found"
+
 **Solución**: Usar `npx prisma generate`
+
 ```dockerfile
 # ❌ Incorrecto
 RUN pnpm exec prisma generate
 
-# ✅ Correcto  
+# ✅ Correcto
 RUN npx prisma generate
 ```
 
 ### Error: "TELEGRAM_BOT_TOKEN is required"
+
 **Solución**: Verificar variables en Railway
+
 ```bash
 railway variables
 # Debería mostrar TELEGRAM_BOT_TOKEN configurado
 ```
 
 ### Error: Database connection failed
+
 **Solución**: Verificar DATABASE_URL
+
 ```bash
 # Verificar conexión
 railway run -- npx prisma db pull
 ```
 
 ### Build muy lento (>10 minutos)
+
 **Causas comunes**:
+
 - ✅ Primer build: Normal, instala todas las dependencies
-- ⚠️ Cambios en package.json: Reinstala dependencies  
+- ⚠️ Cambios en package.json: Reinstala dependencies
 - ⚠️ Cambios en Dockerfile: Rebuild completo
 
 **Optimizaciones**:
+
 - Layer caching en Dockerfile
 - `.dockerignore` para excluir archivos innecesarios
 - `pnpm prune --prod` para reducir tamaño final
 
 ### Build exitoso pero bot no responde
+
 **Verificaciones**:
+
 ```bash
 # 1. Ver logs de startup
 railway logs --tail
@@ -207,6 +224,7 @@ railway logs --tail
 ## 📊 MONITOREO
 
 ### Logs Importantes
+
 ```bash
 # Logs en tiempo real
 railway logs --follow
@@ -219,12 +237,14 @@ railway logs --since 1h
 ```
 
 ### Métricas Clave
+
 - **Uptime**: >99% esperado
 - **Response time**: <2 segundos
 - **Memory usage**: <512MB típico
 - **Error rate**: <1% aceptable
 
 ### Health Checks
+
 ```bash
 # Status del servicio
 railway status
@@ -241,6 +261,7 @@ railway run -- npx prisma db pull
 ## 🔄 PROCESO DE ACTUALIZACIONES
 
 ### Actualizaciones de Código
+
 ```bash
 # 1. Desarrollo local
 git add .
@@ -255,6 +276,7 @@ railway up
 ```
 
 ### Actualizaciones de Dependencies
+
 ```bash
 # 1. Actualizar packages
 pnpm update
@@ -269,6 +291,7 @@ git push origin main
 ```
 
 ### Rollback en caso de problemas
+
 ```bash
 # 1. Ver deployments recientes
 railway deployments
@@ -287,16 +310,19 @@ git checkout main
 ## 🛡️ SEGURIDAD
 
 ### Variables Sensibles
+
 - ✅ **TELEGRAM_BOT_TOKEN**: Configurado en Railway (no en código)
 - ✅ **DATABASE_URL**: Generado por Railway automáticamente
 - ✅ **Secrets**: Nunca en repositorio, solo en Railway dashboard
 
 ### Acceso de Producción
+
 - ✅ **Railway**: Solo owner tiene acceso
 - ✅ **GitHub**: Repositorio privado recomendado
 - ✅ **Telegram Bot**: Token específico de producción
 
 ### Backups
+
 ```bash
 # Backup manual de base de datos
 railway run -- pg_dump $DATABASE_URL > backup.sql
@@ -310,18 +336,21 @@ railway run -- psql $DATABASE_URL < backup.sql
 ## 🎯 OPTIMIZACIONES FUTURAS
 
 ### Para Builds Más Rápidos
+
 1. **Multi-stage Docker builds**
 2. **GitHub Actions** para CI/CD
 3. **Railway build cache** optimization
 4. **Dependencies splitting** (dev vs prod)
 
 ### Para Mejor Monitoring
+
 1. **Health check endpoint** (`GET /health`)
 2. **Structured logging** con timestamps
 3. **Error tracking** con Sentry
 4. **Metrics collection** con OpenTelemetry
 
 ### Para Escalabilidad
+
 1. **Redis** para sessions distribuidas
 2. **Load balancing** si múltiples instancias
 3. **Database pooling** optimization
@@ -332,6 +361,7 @@ railway run -- psql $DATABASE_URL < backup.sql
 ## 📞 SOPORTE RÁPIDO
 
 ### Comandos de Emergencia
+
 ```bash
 # Ver estado general
 railway status
@@ -347,8 +377,9 @@ railway variables
 ```
 
 ### Contactos
+
 - **Railway Dashboard**: https://railway.app
-- **Proyecto**: GASTOS-SAAS  
+- **Proyecto**: GASTOS-SAAS
 - **Documentación**: /docs en este repositorio
 
 ---
@@ -356,17 +387,20 @@ railway variables
 ## ✅ CHECKLIST DE DEPLOYMENT
 
 ### Pre-deployment
+
 - [ ] Código testeado localmente
 - [ ] Build exitoso: `pnpm run build`
 - [ ] Variables verificadas
 - [ ] Changelog actualizado
 
 ### Durante deployment
+
 - [ ] `railway up` ejecutado
 - [ ] Build logs monitoreados
 - [ ] Deploy exitoso confirmado
 
-### Post-deployment  
+### Post-deployment
+
 - [ ] Bot responde a `/start`
 - [ ] Logs sin errores críticos
 - [ ] Database accesible
@@ -379,4 +413,4 @@ railway variables
 
 ---
 
-*Guía de deployment para Financial Bot Multi-Tenant v3.0*
+_Guía de deployment para Financial Bot Multi-Tenant v3.0_

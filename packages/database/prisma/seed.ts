@@ -19,7 +19,9 @@ async function main() {
   });
 
   console.log('✅ Super Admin creado:', superAdmin.firstName);
-  console.log('⚠️  IMPORTANTE: Cambia el telegramId y chatId en el seed antes de usar en producción');
+  console.log(
+    '⚠️  IMPORTANTE: Cambia el telegramId y chatId en el seed antes de usar en producción',
+  );
 
   // Crear empresa de ejemplo (APROBADA)
   const demoCompany = await prisma.company.upsert({
@@ -162,7 +164,7 @@ main()
   .then(async () => {
     await prisma.$disconnect();
   })
-  .catch(async (e) => {
+  .catch(async e => {
     console.error('❌ Error en seed:', e);
     await prisma.$disconnect();
     process.exit(1);

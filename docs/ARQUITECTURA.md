@@ -13,7 +13,7 @@ Sistema de gestión financiera empresarial **multi-tenant SaaS** operado complet
 ### Características Implementadas ✅
 
 - **Multi-tenant SaaS**: Múltiples empresas en una sola instalación
-- **Super Admin System**: Aprobación de empresas por super administradores  
+- **Super Admin System**: Aprobación de empresas por super administradores
 - **Menús Interactivos**: Navegación con botones inline, sin comandos de texto
 - **Sistema de Roles**: Super Admin > Company Admin > Operators
 - **CRUD Completo**: Gestión total desde Telegram con UX moderna
@@ -27,7 +27,7 @@ Sistema de gestión financiera empresarial **multi-tenant SaaS** operado complet
 ```yaml
 Runtime & Language:
   - Node.js: 20 LTS ✅
-  - TypeScript: 5.x ✅  
+  - TypeScript: 5.x ✅
   - Package Manager: pnpm 8.x ✅
   - Monorepo: Turborepo ✅
 
@@ -43,7 +43,7 @@ Database:
 
 Deployment:
   - Platform: Railway ✅
-  - Builder: Docker ✅  
+  - Builder: Docker ✅
   - CI/CD: Git push → Auto deploy ✅
 
 Pendientes (Fases futuras):
@@ -63,7 +63,7 @@ financial-bot/
 │       ├── src/
 │       │   ├── bot/
 │       │   │   ├── commands/   # ✅ 20+ comandos
-│       │   │   ├── menus/      # ✅ Sistema de menús  
+│       │   │   ├── menus/      # ✅ Sistema de menús
 │       │   │   ├── callbacks/  # ✅ Handlers botones
 │       │   │   └── middleware/ # ✅ Auth + permisos
 │       │   ├── types/          # ✅ TypeScript types
@@ -79,7 +79,7 @@ financial-bot/
 │   │   └── src/repositories/   # ✅ 6 repositorios
 │   ├── shared/                 # ✅ Utilities
 │   ├── ai-processor/           # ⏳ Fase 2
-│   ├── storage/                # ⏳ Fase 2  
+│   ├── storage/                # ⏳ Fase 2
 │   └── reports/                # ⏳ Fase 3
 ├── docs/                       # 📚 Documentación
 ├── scripts/                    # 🔧 Deployment scripts
@@ -116,7 +116,7 @@ model Company {
   movements     Movement[]
 }
 
-// 👤 Usuarios por Empresa  
+// 👤 Usuarios por Empresa
 model User {
   id            String         @id @default(cuid())
   telegramId    String         @unique
@@ -144,7 +144,7 @@ model Movement {
 enum CompanyStatus {
   PENDING     // Esperando aprobación
   APPROVED    // Aprobada y activa
-  REJECTED    // Rechazada  
+  REJECTED    // Rechazada
   SUSPENDED   // Suspendida
 }
 
@@ -177,20 +177,21 @@ graph TD
 
 ### Permisos por Rol
 
-| Funcionalidad | Super Admin | Company Admin | Operator |
-|---------------|-------------|---------------|----------|
-| Aprobar empresas | ✅ | ❌ | ❌ |
-| Gestionar usuarios empresa | ❌ | ✅ | ❌ |
-| Ver todos los movimientos | ❌ | ✅ | ❌ |
-| Registrar gastos | ❌ | ✅ | ✅ |
-| Ver propios movimientos | ❌ | ✅ | ✅ |
-| Editar/eliminar | ❌ | ✅ | ❌ |
+| Funcionalidad              | Super Admin | Company Admin | Operator |
+| -------------------------- | ----------- | ------------- | -------- |
+| Aprobar empresas           | ✅          | ❌            | ❌       |
+| Gestionar usuarios empresa | ❌          | ✅            | ❌       |
+| Ver todos los movimientos  | ❌          | ✅            | ❌       |
+| Registrar gastos           | ❌          | ✅            | ✅       |
+| Ver propios movimientos    | ❌          | ✅            | ✅       |
+| Editar/eliminar            | ❌          | ✅            | ❌       |
 
 ---
 
 ## 🤖 SISTEMA DE MENÚS INTERACTIVOS
 
 ### Filosofía UX
+
 > **"al ser un bot sumamente dinámico y fluido no podemos estar typeando los comandos"**
 
 ### Navegación Principal
@@ -200,7 +201,7 @@ graph TD
 ├── 💰 Registrar Gasto
 │   ├── ✍️ Manual
 │   └── 📋 Paso a Paso ⭐
-├── 📊 Ver Movimientos  
+├── 📊 Ver Movimientos
 ├── 👤 Mi Perfil
 └── [Solo Admin]
     ├── ⚙️ Administración
@@ -236,7 +237,7 @@ graph TD
 [build]
   builder = "nixpacks"
 
-[deploy]  
+[deploy]
   startCommand = "node dist/apps/telegram-bot/src/index.js"
   restartPolicyType = "always"
 
@@ -299,16 +300,16 @@ sequenceDiagram
     participant SA as Super Admin
     participant SYS as System
     participant USER as New User
-    
+
     SA->>SYS: /setup_super_admin
     SYS->>SA: ✅ Super admin configurado
-    
+
     USER->>SYS: /register_company "Empresa" email
     SYS->>SA: 📩 Nueva empresa pendiente
-    
+
     SA->>SYS: /admin_companies
     SYS->>SA: 📋 Lista empresas PENDING
-    
+
     SA->>SYS: /approve_company [id]
     SYS->>USER: 🎉 Empresa aprobada
     SYS->>USER: 👤 Admin user creado
@@ -322,25 +323,25 @@ sequenceDiagram
     participant U as User
     participant B as Bot
     participant DB as Database
-    
+
     U->>B: /menu
     B->>U: [Botones interactivos]
-    
+
     U->>B: [CLIC: 💰 Registrar Gasto]
     B->>U: [CLIC: 📋 Paso a Paso]
-    
+
     B->>U: 💰 ¿Cuánto gastaste?
     U->>B: 150
-    
+
     B->>U: 📝 ¿En qué?
     U->>B: Comida restaurante
-    
+
     B->>U: 📂 [🍽️ Alimentación] [🚗 Transporte]
     U->>B: [CLIC: 🍽️ Alimentación]
-    
+
     B->>U: [✅ Confirmar] [✏️ Editar]
     U->>B: [CLIC: ✅ Confirmar]
-    
+
     B->>DB: CREATE Movement
     B->>U: ✅ Gasto F-0001 registrado
 ```
@@ -351,7 +352,7 @@ sequenceDiagram
 // Middleware automático
 export async function authMiddleware(ctx: MyContext, next: NextFunction) {
   const user = await userRepository.findByTelegramId(telegramId);
-  
+
   // ✅ Usuario válido con empresa APPROVED
   if (user && user.company.status === 'APPROVED') {
     ctx.session.user = user;
@@ -363,7 +364,7 @@ export async function authMiddleware(ctx: MyContext, next: NextFunction) {
 // Repository con isolation automático
 async findMovementsByUser(userId: string, companyId: string) {
   return prisma.movement.findMany({
-    where: { 
+    where: {
       userId,
       companyId  // 🔒 Siempre filtra por empresa
     }
@@ -377,13 +378,13 @@ async findMovementsByUser(userId: string, companyId: string) {
 
 ### Completitud por Área
 
-| Área | Progreso | Estado |
-|------|----------|--------|
-| **Backend/DB** | 95% | ✅ Completo |
-| **Bot Commands** | 85% | ✅ Core listo |
-| **UX/Menus** | 70% | ⚠️ Callbacks pendientes |
-| **Deploy** | 90% | ✅ Configurado |
-| **Testing** | 20% | ❌ Pendiente |
+| Área             | Progreso | Estado                  |
+| ---------------- | -------- | ----------------------- |
+| **Backend/DB**   | 95%      | ✅ Completo             |
+| **Bot Commands** | 85%      | ✅ Core listo           |
+| **UX/Menus**     | 70%      | ⚠️ Callbacks pendientes |
+| **Deploy**       | 90%      | ✅ Configurado          |
+| **Testing**      | 20%      | ❌ Pendiente            |
 
 ### Comandos Implementados
 
@@ -397,6 +398,7 @@ async findMovementsByUser(userId: string, companyId: string) {
 ## 🛣️ ROADMAP TÉCNICO
 
 ### ✅ FASE 1: MVP Multi-Tenant (COMPLETADO)
+
 - [x] Monorepo + TypeScript + Prisma
 - [x] Bot con grammY + sistema de roles
 - [x] Multi-tenant architecture
@@ -404,24 +406,28 @@ async findMovementsByUser(userId: string, companyId: string) {
 - [x] Deployment Railway
 
 ### 🚧 FASE 1.5: Estabilización (EN CURSO)
+
 - [x] Deployment configuration
 - [ ] **Callbacks críticos pendientes**
 - [ ] **Testing completo**
 - [ ] **Notificaciones instantáneas**
 
 ### ⏳ FASE 2: AI Processing (Feb-Mar 2025)
+
 - [ ] Cloudflare R2 integration
 - [ ] OpenAI GPT-4 Vision
 - [ ] Comando `/foto` con OCR
 - [ ] Extracción automática datos
 
 ### ⏳ FASE 3: Advanced Reports (Mar-Apr 2025)
+
 - [ ] Excel/PDF generation
 - [ ] Sistema de filtros avanzado
 - [ ] Gráficas automáticas
 - [ ] Export masivo
 
 ### ⏳ FASE 4: Enterprise Features (Abr-May 2025)
+
 - [ ] Registro por voz (Whisper)
 - [ ] Dashboard web opcional
 - [ ] API REST para integraciones
@@ -434,7 +440,7 @@ async findMovementsByUser(userId: string, companyId: string) {
 ### ✅ Decisiones Acertadas
 
 1. **grammY over Telegraf**: Mejor soporte TypeScript
-2. **Prisma over TypeORM**: Developer experience superior  
+2. **Prisma over TypeORM**: Developer experience superior
 3. **Turborepo**: Excelente para monorepo TypeScript
 4. **Multi-tenant desde inicio**: Evitó refactoring masivo
 5. **Sistema de menús**: UX transformada completamente
@@ -474,7 +480,7 @@ Valor del sistema: 9/10
 - Arquitectura escalable
 - Role-based permissions
 
-Complejidad técnica: 7/10  
+Complejidad técnica: 7/10
 - Pero justificada por features
 - Estructura preparada para futuro
 - Calidad de código alta
@@ -490,5 +496,5 @@ Sistema Financial Bot Multi-Tenant con arquitectura robusta, UX moderna y deploy
 
 ---
 
-*Última actualización: 16 de Enero 2025*  
-*Versión: 3.0.0 - Arquitectura Multi-Tenant Estable*
+_Última actualización: 16 de Enero 2025_  
+_Versión: 3.0.0 - Arquitectura Multi-Tenant Estable_

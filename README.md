@@ -44,12 +44,12 @@ pnpm run dev
 
 ## 📚 Documentación
 
-| Documento | Descripción |
-|-----------|-------------|
-| **[📋 COMANDOS](docs/COMANDOS.md)** | Lista completa de comandos por rol |
-| **[🏗️ ARQUITECTURA](docs/ARQUITECTURA.md)** | Arquitectura técnica y decisiones |
-| **[🚀 DEPLOYMENT](docs/DEPLOYMENT.md)** | Guía de deployment en Railway |
-| **[📋 PENDIENTES](docs/PENDIENTES.md)** | Tareas críticas pendientes |
+| Documento                                   | Descripción                        |
+| ------------------------------------------- | ---------------------------------- |
+| **[📋 COMANDOS](docs/COMANDOS.md)**         | Lista completa de comandos por rol |
+| **[🏗️ ARQUITECTURA](docs/ARQUITECTURA.md)** | Arquitectura técnica y decisiones  |
+| **[🚀 DEPLOYMENT](docs/DEPLOYMENT.md)**     | Guía de deployment en Railway      |
+| **[📋 PENDIENTES](docs/PENDIENTES.md)**     | Tareas críticas pendientes         |
 
 ## 🛠️ Stack Tecnológico
 
@@ -64,11 +64,13 @@ Deployment: Railway con Docker
 ## 👥 Roles y Permisos
 
 ### 🔴 Super Admin (Sistema Global)
+
 - ✅ Aprobar/rechazar empresas
 - ✅ Gestionar super administradores
 - ❌ No ve datos específicos de empresas
 
 ### 🟢 Company Admin (Por Empresa)
+
 - ✅ CRUD completo de movimientos (todos los usuarios)
 - ✅ Gestión de usuarios de su empresa
 - ✅ Gestión de categorías
@@ -76,6 +78,7 @@ Deployment: Railway con Docker
 - ❌ No ve datos de otras empresas
 
 ### 🟡 Operator (Por Empresa)
+
 - ✅ Registrar sus propios gastos
 - ✅ Ver sus propios movimientos
 - ✅ Ver su perfil
@@ -85,24 +88,27 @@ Deployment: Railway con Docker
 ## 🎮 Flujo de Usuario
 
 ### 1. Primer Uso (Super Admin)
+
 ```
 /setup_super_admin → Convertirse en super admin del sistema
 ```
 
 ### 2. Registro de Empresa
+
 ```
 /register_company "Mi Empresa SA" admin@empresa.com
 → Estado: PENDING → Super admin aprueba → Estado: APPROVED
 ```
 
 ### 3. Uso Diario (Sin comandos complejos!)
+
 ```
 /menu → [Botones interactivos]
 ↓
 [💰 Registrar Gasto] → [📋 Paso a Paso]
-↓  
+↓
 Bot: "¿Cuánto gastaste?" → Usuario: "150"
-Bot: "¿En qué?" → Usuario: "Comida"  
+Bot: "¿En qué?" → Usuario: "Comida"
 Bot: [🍽️ Alimentación] → Usuario: [Clic]
 Bot: [✅ Confirmar] → ✅ Gasto F-0001 registrado
 ```
@@ -110,6 +116,7 @@ Bot: [✅ Confirmar] → ✅ Gasto F-0001 registrado
 ## 📊 Estado del Proyecto
 
 ### ✅ Completado (85% del MVP)
+
 - Multi-tenant architecture
 - Sistema de roles y permisos
 - Menús interactivos con botones
@@ -118,11 +125,13 @@ Bot: [✅ Confirmar] → ✅ Gasto F-0001 registrado
 - Deployment automatizado
 
 ### 🚧 En Progreso
+
 - Callbacks de menús pendientes
 - Notificaciones instantáneas
 - Testing completo del sistema
 
 ### ⏳ Roadmap Futuro
+
 - **Fase 2**: Procesamiento IA de imágenes (OCR)
 - **Fase 3**: Reportes PDF/Excel avanzados
 - **Fase 4**: Registro por voz y features enterprise
@@ -135,7 +144,7 @@ pnpm run dev              # Iniciar bot en desarrollo
 pnpm run dev:bot          # Solo el bot
 pnpm run build            # Build completo
 
-# Base de datos  
+# Base de datos
 pnpm run db:migrate       # Aplicar migrations
 pnpm run db:seed          # Seed inicial
 pnpm run db:studio        # Prisma Studio
@@ -149,6 +158,7 @@ pnpm run format           # Prettier
 ## 🚀 Deployment
 
 ### Railway (Recomendado)
+
 ```bash
 # Login y setup
 railway login
@@ -168,7 +178,7 @@ financial-bot/
 │   └── telegram-bot/     # 🤖 Bot principal
 ├── packages/
 │   ├── core/            # 📦 Business logic
-│   ├── database/        # 💾 Prisma + repositories  
+│   ├── database/        # 💾 Prisma + repositories
 │   ├── shared/          # 🔧 Utilities
 │   ├── ai-processor/    # 🧠 IA (Fase 2)
 │   ├── storage/         # 📁 Storage (Fase 2)
