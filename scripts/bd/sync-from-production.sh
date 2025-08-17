@@ -53,7 +53,7 @@ echo "📍 PASO 2: Haciendo backup de producción..."
 
 echo ""
 echo "📍 PASO 3: Obteniendo último backup de Railway..."
-LATEST_RAILWAY_BACKUP=$(find backups -name "railway_backup_*.sql.gz" -type f | sort -r | head -n 1)
+LATEST_RAILWAY_BACKUP=$(find scripts/backups -name "railway_backup_*.sql.gz" -type f | sort -r | head -n 1)
 
 if [ -z "$LATEST_RAILWAY_BACKUP" ]; then
     echo "❌ No se encontró backup de Railway"
