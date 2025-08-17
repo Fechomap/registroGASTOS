@@ -5,6 +5,7 @@ import {
   companyRepository,
   userRepository,
   categoryRepository,
+  Company,
 } from '@financial-bot/database';
 import { CompanyStatus } from '@financial-bot/database';
 
@@ -229,7 +230,7 @@ async function createDefaultCategories(companyId: string) {
 /**
  * Notificar aprobación de empresa
  */
-async function notifyCompanyApproval(ctx: CommandContext<MyContext>, company: any) {
+async function notifyCompanyApproval(ctx: CommandContext<MyContext>, company: Company) {
   if (!company.requestedBy) return;
 
   try {
@@ -254,7 +255,7 @@ async function notifyCompanyApproval(ctx: CommandContext<MyContext>, company: an
  */
 async function notifyCompanyRejection(
   ctx: CommandContext<MyContext>,
-  company: any,
+  company: Company,
   reason: string,
 ) {
   if (!company.requestedBy) return;

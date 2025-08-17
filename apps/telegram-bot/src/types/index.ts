@@ -55,7 +55,7 @@ export interface EditFlowData {
   step: 'select_field' | 'enter_value' | 'confirm';
   movementId: string;
   field?: 'amount' | 'description' | 'category' | 'date';
-  newValue?: unknown;
+  newValue?: number | string | Date | null;
 }
 
 // Datos para gestión de usuarios

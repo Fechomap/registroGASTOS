@@ -1,9 +1,7 @@
 import { CallbackQueryContext } from 'grammy';
 import { MyContext } from '../../types';
-import { userRepository } from '@financial-bot/database';
+import { logBotError } from '../../utils/logger';
 import {
-  createMainMenu,
-  getMainMenuMessage,
   createAdminMenu,
   createUsersMenu,
   createReportsMenu,
@@ -115,59 +113,8 @@ export async function handleMenuCallback(ctx: CallbackQueryContext<MyContext>) {
         await ctx.answerCallbackQuery('Opción no reconocida');
     }
   } catch (error) {
-    console.error('Error en menu callback:', error);
+    logBotError(error as Error, { command: 'menu_callback' });
     await ctx.answerCallbackQuery('❌ Error al procesar la acción');
-  }
-}
-
-/**
- * Mostrar menú principal
- */
-async function showMainMenu(ctx: CallbackQueryContext<MyContext>) {
-  const telegramId = ctx.from?.id.toString();
-
-  if (!telegramId) {
-    await ctx.answerCallbackQuery('❌ Error de identificación');
-    return;
-  }
-
-  const user = await userRepository.findByTelegramId(telegramId);
-  if (!user) {
-    await ctx.answerCallbackQuery('❌ Usuario no encontrado');
-    return;
-  }
-
-  try {
-    // Verificar si el usuario tiene empresas
-    const userCompanies = await userRepository.getUserCompanies(user.id);
-
-    if (userCompanies.length === 0) {
-      // No tiene empresas, mostrar menú de registro
-      const { createNoCompaniesMenu, getNoCompaniesMessage } = await import(
-        '../menus/company-setup.menu'
-      );
-
-      await ctx.editMessageText(getNoCompaniesMessage(user.firstName), {
-        reply_markup: createNoCompaniesMenu(),
-        parse_mode: 'Markdown',
-      });
-      await ctx.answerCallbackQuery();
-      return;
-    }
-
-    // Tiene empresas, mostrar menú normal
-    const currentCompany = userCompanies[0].company;
-    const keyboard = createMainMenu(user.role);
-    const message = getMainMenuMessage(user.firstName, user.role, currentCompany.name);
-
-    await ctx.editMessageText(message, {
-      reply_markup: keyboard,
-      parse_mode: 'Markdown',
-    });
-    await ctx.answerCallbackQuery();
-  } catch (error) {
-    console.error('Error in showMainMenu:', error);
-    await ctx.answerCallbackQuery('❌ Error al cargar el menú');
   }
 }
 

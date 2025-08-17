@@ -1,7 +1,11 @@
 import { CommandContext } from 'grammy';
 import { MyContext } from '../../types';
-import { userRepository, companyRepository, systemAdminRepository } from '@financial-bot/database';
-import { UserRole } from '@financial-bot/database';
+import {
+  userRepository,
+  companyRepository,
+  systemAdminRepository,
+  Company,
+} from '@financial-bot/database';
 
 /**
  * Comando /register_company - Solicitar registro de nueva empresa
@@ -12,7 +16,6 @@ export async function registerCompanyCommand(ctx: CommandContext<MyContext>) {
   const chatId = ctx.chat?.id.toString();
   const firstName = ctx.from?.first_name;
   const lastName = ctx.from?.last_name;
-  const username = ctx.from?.username;
 
   if (!telegramId || !chatId || !firstName) {
     await ctx.reply('❌ No se pudo obtener información de tu cuenta de Telegram.');
@@ -97,7 +100,7 @@ export async function registerCompanyCommand(ctx: CommandContext<MyContext>) {
 /**
  * Notificar a todos los super admins sobre nueva solicitud
  */
-async function notifySystemAdmins(ctx: CommandContext<MyContext>, company: any) {
+async function notifySystemAdmins(ctx: CommandContext<MyContext>, company: Company) {
   try {
     const systemAdmins = await systemAdminRepository.findAll();
 

@@ -1,18 +1,19 @@
-// Solo cargar dotenv en desarrollo - Railway inyecta variables automáticamente
-if (process.env.NODE_ENV !== 'production') {
-  try {
-    const dotenv = require('dotenv');
-    const path = require('path');
-    dotenv.config({ path: path.resolve(process.cwd(), '../../', '.env') });
-  } catch (error) {
-    console.log('dotenv not available - using environment variables');
-  }
-}
 import { Bot, session } from 'grammy';
 import { conversations } from '@grammyjs/conversations';
 import { hydrate } from '@grammyjs/hydrate';
 import { createClient } from 'redis';
 import { logger } from './utils/logger';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// Solo cargar dotenv en desarrollo - Railway inyecta variables automáticamente
+if (process.env.NODE_ENV !== 'production') {
+  try {
+    dotenv.config({ path: path.resolve(process.cwd(), '../../', '.env') });
+  } catch (error) {
+    logger.info('dotenv not available - using environment variables');
+  }
+}
 import { MyContext, SessionData } from './types';
 import { authMiddleware } from './middleware/auth';
 import { errorMiddleware } from './middleware/error';
@@ -33,7 +34,7 @@ if (!BOT_TOKEN) {
 const bot = new Bot<MyContext>(BOT_TOKEN);
 
 // Configurar cliente Redis para sesiones (opcional)
-let redisClient: any = null;
+let redisClient: ReturnType<typeof createClient> | null = null;
 if (REDIS_URL) {
   try {
     redisClient = createClient({ url: REDIS_URL });

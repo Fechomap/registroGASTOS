@@ -19,12 +19,12 @@ export async function editFlowMiddleware(ctx: MyContext, next: NextFunction) {
 
   const input = ctx.message.text.trim();
   let isValid = false;
-  let parsedValue: any;
+  let parsedValue: number | string | Date | null = null;
   let errorMessage = '';
 
   // Validar según el campo que se está editando
   switch (editFlow.field) {
-    case 'amount':
+    case 'amount': {
       // Validar formato de número
       const amountMatch = input.replace(',', '.').match(/^\d+(\.\d{1,2})?$/);
       if (amountMatch) {
@@ -38,6 +38,7 @@ export async function editFlowMiddleware(ctx: MyContext, next: NextFunction) {
         errorMessage = '❌ Formato inválido. Usa números con máximo 2 decimales.\nEjemplo: 150.50';
       }
       break;
+    }
 
     case 'description':
       // Validar descripción
@@ -49,7 +50,7 @@ export async function editFlowMiddleware(ctx: MyContext, next: NextFunction) {
       }
       break;
 
-    case 'date':
+    case 'date': {
       // Validar formato de fecha DD/MM/YYYY
       const dateMatch = input.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
       if (dateMatch) {
@@ -72,6 +73,7 @@ export async function editFlowMiddleware(ctx: MyContext, next: NextFunction) {
         errorMessage = '❌ Formato de fecha inválido.\nUsa: DD/MM/YYYY\nEjemplo: 15/08/2024';
       }
       break;
+    }
   }
 
   if (!isValid) {
@@ -80,7 +82,9 @@ export async function editFlowMiddleware(ctx: MyContext, next: NextFunction) {
   }
 
   // Guardar el valor y pasar a confirmación
-  editFlow.newValue = parsedValue;
+  if (parsedValue !== undefined) {
+    editFlow.newValue = parsedValue;
+  }
   editFlow.step = 'confirm';
 
   // Mostrar confirmación

@@ -2,7 +2,7 @@ import { CommandContext } from 'grammy';
 import { MyContext } from '../../types';
 import { movementRepository } from '@financial-bot/database';
 import { logger } from '../../utils/logger';
-import { formatCurrency, formatDate, formatMovementType, LIMITS } from '@financial-bot/shared';
+import { formatCurrency, formatDate, LIMITS } from '@financial-bot/shared';
 
 /**
  * Comando /movimientos - Lista los movimientos del usuario
@@ -20,7 +20,7 @@ export async function movementsCommand(ctx: CommandContext<MyContext>) {
   try {
     const args = ctx.match?.toString().trim();
     let page = 1;
-    let targetUserId = user.id; // Por defecto, mostrar movimientos propios
+    let targetUserId: string | undefined = user.id; // Por defecto, mostrar movimientos propios
 
     // Parsear argumentos (página opcional)
     if (args) {
@@ -34,7 +34,7 @@ export async function movementsCommand(ctx: CommandContext<MyContext>) {
     if (user.role === 'ADMIN') {
       // TODO: En el futuro implementar filtros por usuario específico
       // Por ahora, los admins ven todos los movimientos de la empresa
-      targetUserId = undefined as any; // Ver todos
+      targetUserId = undefined; // Ver todos
     }
 
     // Configuración de paginación
@@ -76,7 +76,7 @@ export async function movementsCommand(ctx: CommandContext<MyContext>) {
     }
 
     // Listar movimientos
-    movements.forEach((movement, index) => {
+    movements.forEach((movement, _index) => {
       const typeIcon = movement.type === 'EXPENSE' ? '💸' : '💰';
       const amount = formatCurrency(Number(movement.amount));
       const date = formatDate(movement.date, 'short');

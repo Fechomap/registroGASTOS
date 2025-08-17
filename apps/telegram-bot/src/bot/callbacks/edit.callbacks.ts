@@ -2,6 +2,7 @@ import { CallbackQueryContext } from 'grammy';
 import { MyContext, EditFlowData } from '../../types';
 import { movementRepository, categoryRepository } from '@financial-bot/database';
 import { formatCurrency, formatDate } from '@financial-bot/shared';
+import { logBotError } from '../../utils/logger';
 
 /**
  * Manejadores de callbacks para el flujo de edición
@@ -37,7 +38,7 @@ export async function handleEditFieldSelection(ctx: CallbackQueryContext<MyConte
       promptMessage = '📄 *Editar Descripción*\n\nIngresa la nueva descripción:';
       break;
 
-    case 'category':
+    case 'category': {
       // Obtener categorías disponibles
       const categories = await categoryRepository.findByCompany(ctx.session.user.companyId);
 
@@ -52,6 +53,7 @@ export async function handleEditFieldSelection(ctx: CallbackQueryContext<MyConte
         ],
       };
       break;
+    }
 
     case 'date':
       promptMessage =
@@ -210,20 +212,33 @@ async function showEditConfirmation(ctx: CallbackQueryContext<MyContext>, editFl
 // Función auxiliar para ejecutar la edición
 async function executeEdit(ctx: CallbackQueryContext<MyContext>, editFlow: EditFlowData) {
   try {
-    const updateData: any = {};
+    const updateData: {
+      amount?: number;
+      description?: string;
+      categoryId?: string | null;
+      date?: Date;
+    } = {};
 
     switch (editFlow.field) {
       case 'amount':
-        updateData.amount = editFlow.newValue;
+        if (typeof editFlow.newValue === 'number') {
+          updateData.amount = editFlow.newValue;
+        }
         break;
       case 'description':
-        updateData.description = editFlow.newValue;
+        if (typeof editFlow.newValue === 'string') {
+          updateData.description = editFlow.newValue;
+        }
         break;
       case 'category':
-        updateData.categoryId = editFlow.newValue;
+        if (typeof editFlow.newValue === 'string' || editFlow.newValue === null) {
+          updateData.categoryId = editFlow.newValue;
+        }
         break;
       case 'date':
-        updateData.date = editFlow.newValue;
+        if (editFlow.newValue instanceof Date) {
+          updateData.date = editFlow.newValue;
+        }
         break;
     }
 
@@ -243,7 +258,7 @@ async function executeEdit(ctx: CallbackQueryContext<MyContext>, editFlow: EditF
     await ctx.editMessageText(successMessage, { parse_mode: 'Markdown' });
     delete ctx.session.conversationData?.editFlow;
   } catch (error) {
-    console.error('Error ejecutando edición:', error);
+    logBotError(error as Error, { command: 'edit_execute' });
     await ctx.editMessageText('❌ Error al guardar los cambios. Intenta nuevamente.');
   }
 }

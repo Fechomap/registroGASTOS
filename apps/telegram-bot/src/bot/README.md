@@ -3,25 +3,35 @@
 ## 📁 Organización de Archivos
 
 ### `/commands/`
+
 Comandos principales del bot que inician flujos o acciones directas.
+
 - `expense.command.ts` - Comando `/gasto` que inicia el flujo de registro
 
 ### `/conversations/`
+
 Centralizador de todas las conversaciones y flujos interactivos.
+
 - `index.ts` - Exportaciones centralizadas
 
 ### `/handlers/`
+
 Lógica de negocio para manejar diferentes tipos de interacciones.
+
 - `conversation.handler.ts` - Maneja el flujo completo de registro de gastos
 
 ### `/callbacks/`
+
 Manejadores para callbacks de botones InlineKeyboard.
+
 - `menu.callbacks.ts` - Callbacks del menú principal
 - `expense.callbacks.ts` - Callbacks específicos del flujo de gastos
 - `index.ts` - Exportaciones centralizadas
 
 ### `/menus/`
+
 Definiciones de menús y mensajes de la interfaz.
+
 - `main.menu.ts` - Menú principal y submenús de administración
 - `expense.menu.ts` - Menús específicos para registro de gastos
 - `index.ts` - Exportaciones centralizadas
@@ -29,11 +39,13 @@ Definiciones de menús y mensajes de la interfaz.
 ## 🎯 Flujo de Registro de Gastos
 
 ### Para Operadores:
+
 ```
 /gasto → [Empresa única] → Monto → Descripción → Categoría → Confirmar
 ```
 
 ### Para Administradores:
+
 ```
 /gasto → Tipo (Empresa/Personal) → [Si Empresa: Seleccionar] → Monto → Descripción → Categoría → Confirmar
 ```
@@ -41,12 +53,14 @@ Definiciones de menús y mensajes de la interfaz.
 ## 🏗️ Arquitectura de Datos
 
 ### Base de Datos:
+
 - **UserCompany**: Junction table para multi-empresa
 - **PersonalMovement**: Gastos personales de administradores
 - **PersonalCategory**: Categorías personales
 - **Movement**: Gastos empresariales (existente)
 
 ### Tipos TypeScript:
+
 ```typescript
 interface RegisterFlowData {
   step: 'expense_type' | 'company_select' | 'amount' | 'description' | 'category' | 'confirm';
@@ -63,7 +77,7 @@ interface RegisterFlowData {
 1. **expense_type** - Selección tipo (solo admins)
 2. **company_select** - Selección empresa (si múltiples)
 3. **amount** - Ingreso de monto
-4. **description** - Ingreso de descripción  
+4. **description** - Ingreso de descripción
 5. **category** - Selección de categoría
 6. **confirm** - Confirmación final
 

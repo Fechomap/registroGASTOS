@@ -232,7 +232,11 @@ export async function processExpenseTypeSelection(
         registerFlow.step = 'company_select';
         ctx.session.conversationData = { registerFlow };
 
-        const companies = userCompanies.map((uc: any) => ({
+        interface UserCompany {
+          companyId: string;
+          company: { name: string };
+        }
+        const companies = userCompanies.map((uc: UserCompany) => ({
           id: uc.companyId,
           name: uc.company.name,
         }));
@@ -269,7 +273,11 @@ export async function processCompanySelection(ctx: Context & MyContext, companyI
     }
 
     const userCompanies = await userRepository.getUserCompanies(user.id);
-    const selectedCompany = userCompanies.find((uc: any) => uc.companyId === companyId);
+    interface UserCompany {
+      companyId: string;
+      company: { name: string };
+    }
+    const selectedCompany = userCompanies.find((uc: UserCompany) => uc.companyId === companyId);
 
     if (!selectedCompany) {
       await ctx.answerCallbackQuery('❌ No tienes acceso a esta empresa');
@@ -427,7 +435,7 @@ async function showCategorySelection(ctx: Context & MyContext, registerFlow: Reg
 /**
  * Paso 4: Manejar selección de categoría (será manejado por callback)
  */
-async function handleCategoryStep(ctx: Context & MyContext, registerFlow: RegisterFlowData) {
+async function handleCategoryStep(ctx: Context & MyContext, _registerFlow: RegisterFlowData) {
   // Este paso se maneja por callbacks, no por texto
   await ctx.reply(
     '📂 **Esperando selección de categoría**\n\n' +
@@ -506,7 +514,7 @@ export async function saveExpense(ctx: Context & MyContext) {
   }
 
   try {
-    let movement: any;
+    let movement: { folio: string; amount: unknown; id: string };
     let folio: string;
     const isPersonal = registerFlow.expenseType === 'PERSONAL';
 

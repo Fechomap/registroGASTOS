@@ -5,7 +5,7 @@ import { MyContext } from '../../types';
  * Configurar escenas conversacionales
  * TODO: Implementar en la siguiente fase
  */
-export function setupScenes(bot: Bot<MyContext>) {
+export function setupScenes(_bot: Bot<MyContext>) {
   // Las escenas se implementarán en la siguiente fase
   // Esto incluirá:
   // - Flujo de registro paso a paso

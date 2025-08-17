@@ -60,7 +60,7 @@ export async function categoryFlowMiddleware(ctx: MyContext, next: NextFunction)
       }
       break;
 
-    case 'color':
+    case 'color': {
       // Validar formato de color hexadecimal
       const colorPattern = /^#[0-9A-Fa-f]{6}$/;
       if (colorPattern.test(input)) {
@@ -70,6 +70,7 @@ export async function categoryFlowMiddleware(ctx: MyContext, next: NextFunction)
         errorMessage = '❌ El color debe estar en formato hexadecimal.\nEjemplo: #FF5733';
       }
       break;
+    }
   }
 
   if (!isValid) {
@@ -129,7 +130,11 @@ async function handleCategoryCreation(ctx: MyContext, categoryFlow: CategoryMana
 
 async function handleCategoryUpdate(ctx: MyContext, categoryFlow: CategoryManagementData) {
   try {
-    const updateData: any = {};
+    const updateData: {
+      name?: string;
+      icon?: string;
+      color?: string;
+    } = {};
 
     if (categoryFlow.name) updateData.name = categoryFlow.name;
     if (categoryFlow.icon) updateData.icon = categoryFlow.icon;

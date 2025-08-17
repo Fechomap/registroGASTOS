@@ -1,6 +1,7 @@
 import { CommandContext } from 'grammy';
 import { MyContext } from '../../types';
 import { systemAdminRepository } from '@financial-bot/database';
+import { logger } from '../../utils/logger';
 
 /**
  * Comando especial /setup_super_admin - Solo funciona si no hay super admins
@@ -33,7 +34,7 @@ export async function setupSuperAdminCommand(ctx: CommandContext<MyContext>) {
     }
 
     // Crear el primer super admin
-    const superAdmin = await systemAdminRepository.create({
+    await systemAdminRepository.create({
       telegramId,
       chatId,
       firstName,
@@ -59,9 +60,9 @@ export async function setupSuperAdminCommand(ctx: CommandContext<MyContext>) {
     await ctx.reply(successMessage, { parse_mode: 'Markdown' });
 
     // Log para auditoria
-    console.log(`✅ Super admin configurado: ${firstName} (${telegramId})`);
+    logger.info(`✅ Super admin configurado: ${firstName} (${telegramId})`);
   } catch (error) {
-    console.error('Error configurando super admin:', error);
+    logger.error('Error configurando super admin:', error);
     await ctx.reply('❌ Error al configurar super administrador. Intenta nuevamente.');
   }
 }

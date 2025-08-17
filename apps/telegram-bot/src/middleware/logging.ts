@@ -12,7 +12,6 @@ export async function loggingMiddleware(ctx: MyContext, next: NextFunction) {
   const userId = ctx.from?.id?.toString();
   const chatId = ctx.chat?.id?.toString();
   const username = ctx.from?.username;
-  const firstName = ctx.from?.first_name;
   const messageText = ctx.message?.text;
   const updateType = getUpdateType(ctx);
 

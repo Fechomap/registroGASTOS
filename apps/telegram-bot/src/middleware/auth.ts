@@ -106,7 +106,7 @@ export function isAdmin(ctx: MyContext): boolean {
 /**
  * Helper para verificar si el usuario puede editar un movimiento
  */
-export function canEditMovement(ctx: MyContext, movementUserId: string): boolean {
+export function canEditMovement(ctx: MyContext, _movementUserId: string): boolean {
   const user = ctx.session.user;
   if (!user) return false;
 

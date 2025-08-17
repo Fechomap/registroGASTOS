@@ -1,7 +1,6 @@
 import { CommandContext } from 'grammy';
 import { MyContext } from '../../types';
 import { movementRepository } from '@financial-bot/database';
-import { requireAdmin } from '../../middleware/auth';
 import { logger } from '../../utils/logger';
 import { formatCurrency, validateData, incomeCommandSchema } from '@financial-bot/shared';
 

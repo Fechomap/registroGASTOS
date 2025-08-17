@@ -59,7 +59,13 @@ export function createExpenseEditMenu() {
 /**
  * Menú de categorías para gastos
  */
-export function createCategoriesMenu(categories: any[]) {
+interface Category {
+  id: string;
+  name: string;
+  icon?: string;
+}
+
+export function createCategoriesMenu(categories: Category[]) {
   const keyboard = new InlineKeyboard();
 
   // Agregar categorías en filas de 2
@@ -91,7 +97,16 @@ export function createCategoriesMenu(categories: any[]) {
 /**
  * Mensaje de resumen del gasto
  */
-export function getExpenseSummaryMessage(expense: any) {
+interface Expense {
+  amount: number;
+  description: string;
+  category?: string;
+  date: string;
+  vendor?: string;
+  invoice?: string;
+}
+
+export function getExpenseSummaryMessage(expense: Expense) {
   return (
     `💰 **Resumen del Gasto**\n\n` +
     `💵 **Monto:** $${expense.amount} MXN\n` +
