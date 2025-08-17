@@ -45,11 +45,11 @@ TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
 echo ""
 echo "📍 PASO 1: Haciendo backup de base local actual..."
-./scripts/backup-db.sh local
+./scripts/bd/backup-db.sh local
 
 echo ""
 echo "📍 PASO 2: Haciendo backup de producción..."
-./scripts/backup-db.sh railway
+./scripts/bd/backup-db.sh railway
 
 echo ""
 echo "📍 PASO 3: Obteniendo último backup de Railway..."

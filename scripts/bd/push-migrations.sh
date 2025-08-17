@@ -31,7 +31,7 @@ pnpm prisma migrate status
 echo ""
 echo "📍 PASO 2: Haciendo backup de Railway..."
 cd ../..
-RAILWAY_DATABASE_URL=$RAILWAY_DATABASE_URL ./scripts/backup-db.sh railway
+RAILWAY_DATABASE_URL=$RAILWAY_DATABASE_URL ./scripts/bd/backup-db.sh railway
 
 # Paso 3: Aplicar migraciones a Railway
 echo ""
