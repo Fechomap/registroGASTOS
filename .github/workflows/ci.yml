@@ -118,6 +118,11 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
           
+      - name: Generate Prisma client again (ensure latest)
+        run: pnpm run --filter=@financial-bot/database db:generate
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+          
       - name: Run tests
         run: pnpm run test:ci
         env:
