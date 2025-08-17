@@ -9,7 +9,7 @@ export {
   createAdminMenu,
   createUsersMenu,
   createReportsMenu,
-  createProfileMenu
+  createProfileMenu,
 } from './main.menu';
 
 // Menús de gastos
@@ -22,5 +22,5 @@ export {
   getExpenseTypeMessage,
   getCompanySelectMessage,
   getExpenseSummaryMessage,
-  getExpenseSuccessMessage
+  getExpenseSuccessMessage,
 } from './expense.menu';

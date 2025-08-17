@@ -42,11 +42,7 @@ export class CategoryRepository {
           orderBy: { order: 'asc' },
         },
       },
-      orderBy: [
-        { parentId: { sort: 'asc', nulls: 'first' } },
-        { order: 'asc' },
-        { name: 'asc' },
-      ],
+      orderBy: [{ parentId: { sort: 'asc', nulls: 'first' } }, { order: 'asc' }, { name: 'asc' }],
     });
   }
 
@@ -97,8 +93,8 @@ export class CategoryRepository {
         prisma.category.update({
           where: { id },
           data: { order },
-        })
-      )
+        }),
+      ),
     );
   }
 
@@ -155,10 +151,7 @@ export class CategoryRepository {
           },
         },
       },
-      orderBy: [
-        { parentId: { sort: 'asc', nulls: 'first' } },
-        { order: 'asc' },
-      ],
+      orderBy: [{ parentId: { sort: 'asc', nulls: 'first' } }, { order: 'asc' }],
     });
   }
 }

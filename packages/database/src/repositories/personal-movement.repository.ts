@@ -30,7 +30,7 @@ export class PersonalMovementRepository {
       categoryId?: string;
       limit?: number;
       offset?: number;
-    }
+    },
   ): Promise<PersonalMovement[]> {
     const where: Prisma.PersonalMovementWhereInput = {
       userId,
@@ -85,7 +85,7 @@ export class PersonalMovementRepository {
     const today = new Date();
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, '0');
-    
+
     // Buscar el último folio del mes para este usuario
     const lastMovement = await prisma.personalMovement.findFirst({
       where: {

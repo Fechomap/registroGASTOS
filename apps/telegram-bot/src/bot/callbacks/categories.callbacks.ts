@@ -39,7 +39,10 @@ export async function handleCategoryAction(ctx: CallbackQueryContext<MyContext>)
   await ctx.answerCallbackQuery();
 }
 
-async function handleAddCategory(ctx: CallbackQueryContext<MyContext>, categoryFlow: CategoryManagementData) {
+async function handleAddCategory(
+  ctx: CallbackQueryContext<MyContext>,
+  categoryFlow: CategoryManagementData,
+) {
   categoryFlow.step = 'name';
   categoryFlow.action = 'add';
 
@@ -55,26 +58,27 @@ async function handleAddCategory(ctx: CallbackQueryContext<MyContext>, categoryF
   message += '• Marketing\n\n';
 
   if (categories.length > 0) {
-    message += '🔗 También puedes crear una subcategoría seleccionando primero una categoría padre:';
+    message +=
+      '🔗 También puedes crear una subcategoría seleccionando primero una categoría padre:';
 
     const keyboard = [
-      ...categories.map(cat => ([
-        { text: `${cat.icon || '📂'} ${cat.name}`, callback_data: `category_parent_${cat.id}` }
-      ])),
+      ...categories.map(cat => [
+        { text: `${cat.icon || '📂'} ${cat.name}`, callback_data: `category_parent_${cat.id}` },
+      ]),
       [{ text: '📂 Categoría Principal', callback_data: 'category_parent_none' }],
-      [{ text: '❌ Cancelar', callback_data: 'category_cancel' }]
+      [{ text: '❌ Cancelar', callback_data: 'category_cancel' }],
     ];
 
     await ctx.editMessageText(message, {
       parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: keyboard }
+      reply_markup: { inline_keyboard: keyboard },
     });
   } else {
     await ctx.editMessageText(message, {
       parse_mode: 'Markdown',
       reply_markup: {
-        inline_keyboard: [[{ text: '❌ Cancelar', callback_data: 'category_cancel' }]]
-      }
+        inline_keyboard: [[{ text: '❌ Cancelar', callback_data: 'category_cancel' }]],
+      },
     });
   }
 }
@@ -102,18 +106,23 @@ export async function handleCategoryParentSelection(ctx: CallbackQueryContext<My
   await ctx.editMessageText(message, {
     parse_mode: 'Markdown',
     reply_markup: {
-      inline_keyboard: [[{ text: '❌ Cancelar', callback_data: 'category_cancel' }]]
-    }
+      inline_keyboard: [[{ text: '❌ Cancelar', callback_data: 'category_cancel' }]],
+    },
   });
 
   await ctx.answerCallbackQuery();
 }
 
-async function handleEditCategorySelection(ctx: CallbackQueryContext<MyContext>, categoryFlow: CategoryManagementData) {
+async function handleEditCategorySelection(
+  ctx: CallbackQueryContext<MyContext>,
+  categoryFlow: CategoryManagementData,
+) {
   const categories = await categoryRepository.findByCompany(ctx.session.user!.companyId);
 
   if (categories.length === 0) {
-    await ctx.editMessageText('📭 No hay categorías para editar.\n\nUsa ➕ Agregar para crear tu primera categoría.');
+    await ctx.editMessageText(
+      '📭 No hay categorías para editar.\n\nUsa ➕ Agregar para crear tu primera categoría.',
+    );
     return;
   }
 
@@ -123,22 +132,25 @@ async function handleEditCategorySelection(ctx: CallbackQueryContext<MyContext>,
   let message = '✏️ *Editar Categoría*\n\n';
   message += 'Selecciona la categoría que deseas editar:';
 
-  const keyboard = categories.map(cat => ([
-    { 
-      text: `${cat.icon || '📂'} ${cat.name}${cat.parentId ? ' (subcategoría)' : ''}`, 
-      callback_data: `category_edit_${cat.id}` 
-    }
-  ]));
+  const keyboard = categories.map(cat => [
+    {
+      text: `${cat.icon || '📂'} ${cat.name}${cat.parentId ? ' (subcategoría)' : ''}`,
+      callback_data: `category_edit_${cat.id}`,
+    },
+  ]);
 
   keyboard.push([{ text: '❌ Cancelar', callback_data: 'category_cancel' }]);
 
   await ctx.editMessageText(message, {
     parse_mode: 'Markdown',
-    reply_markup: { inline_keyboard: keyboard }
+    reply_markup: { inline_keyboard: keyboard },
   });
 }
 
-async function handleDeleteCategorySelection(ctx: CallbackQueryContext<MyContext>, categoryFlow: CategoryManagementData) {
+async function handleDeleteCategorySelection(
+  ctx: CallbackQueryContext<MyContext>,
+  categoryFlow: CategoryManagementData,
+) {
   const categories = await categoryRepository.getWithMovementCount(ctx.session.user!.companyId);
 
   if (categories.length === 0) {
@@ -157,18 +169,20 @@ async function handleDeleteCategorySelection(ctx: CallbackQueryContext<MyContext
     const movementCount = cat._count?.movements || 0;
     const canDelete = movementCount === 0;
     const text = `${cat.icon || '📂'} ${cat.name}${movementCount > 0 ? ` (${movementCount} movimientos)` : ''}`;
-    
-    return [{
-      text: canDelete ? text : `🚫 ${text}`,
-      callback_data: canDelete ? `category_delete_${cat.id}` : 'category_nodelete'
-    }];
+
+    return [
+      {
+        text: canDelete ? text : `🚫 ${text}`,
+        callback_data: canDelete ? `category_delete_${cat.id}` : 'category_nodelete',
+      },
+    ];
   });
 
   keyboard.push([{ text: '❌ Cancelar', callback_data: 'category_cancel' }]);
 
   await ctx.editMessageText(message, {
     parse_mode: 'Markdown',
-    reply_markup: { inline_keyboard: keyboard }
+    reply_markup: { inline_keyboard: keyboard },
   });
 }
 
@@ -189,7 +203,8 @@ async function handleCategoryDetails(ctx: CallbackQueryContext<MyContext>) {
     categories
       .sort((a, b) => (b._count?.movements || 0) - (a._count?.movements || 0))
       .forEach((cat, index) => {
-        if (index < 10) { // Solo mostrar top 10
+        if (index < 10) {
+          // Solo mostrar top 10
           const count = cat._count?.movements || 0;
           const percentage = totalMovements > 0 ? ((count / totalMovements) * 100).toFixed(1) : '0';
           message += `${index + 1}. ${cat.icon || '📂'} *${cat.name}*: ${count} (${percentage}%)\n`;
@@ -204,8 +219,8 @@ async function handleCategoryDetails(ctx: CallbackQueryContext<MyContext>) {
   await ctx.editMessageText(message, {
     parse_mode: 'Markdown',
     reply_markup: {
-      inline_keyboard: [[{ text: '⬅️ Volver', callback_data: 'category_back' }]]
-    }
+      inline_keyboard: [[{ text: '⬅️ Volver', callback_data: 'category_back' }]],
+    },
   });
 }
 
@@ -240,17 +255,15 @@ export async function handleCategoryEdit(ctx: CallbackQueryContext<MyContext>) {
       inline_keyboard: [
         [
           { text: '📝 Nombre', callback_data: `category_field_name_${categoryId}` },
-          { text: '🎭 Icono', callback_data: `category_field_icon_${categoryId}` }
+          { text: '🎭 Icono', callback_data: `category_field_icon_${categoryId}` },
         ],
         [
           { text: '🎨 Color', callback_data: `category_field_color_${categoryId}` },
-          { text: '🔗 Padre', callback_data: `category_field_parent_${categoryId}` }
+          { text: '🔗 Padre', callback_data: `category_field_parent_${categoryId}` },
         ],
-        [
-          { text: '❌ Cancelar', callback_data: 'category_cancel' }
-        ]
-      ]
-    }
+        [{ text: '❌ Cancelar', callback_data: 'category_cancel' }],
+      ],
+    },
   });
 
   await ctx.answerCallbackQuery();
@@ -284,10 +297,10 @@ export async function handleCategoryDelete(ctx: CallbackQueryContext<MyContext>)
       inline_keyboard: [
         [
           { text: '🗑️ Sí, Eliminar', callback_data: `category_confirm_delete_${categoryId}` },
-          { text: '❌ Cancelar', callback_data: 'category_cancel' }
-        ]
-      ]
-    }
+          { text: '❌ Cancelar', callback_data: 'category_cancel' },
+        ],
+      ],
+    },
   });
 
   await ctx.answerCallbackQuery();
@@ -309,15 +322,17 @@ export async function handleCategoryConfirmDelete(ctx: CallbackQueryContext<MyCo
 
     await ctx.editMessageText(
       `✅ *Categoría Eliminada*\n\n` +
-      `🗑️ La categoría "${category.name}" ha sido eliminada exitosamente.`
-    , { parse_mode: 'Markdown' });
+        `🗑️ La categoría "${category.name}" ha sido eliminada exitosamente.`,
+      { parse_mode: 'Markdown' },
+    );
 
     delete ctx.session.conversationData?.categoryFlow;
-
   } catch (error) {
     console.error('Error eliminando categoría:', error);
     if (error instanceof Error && error.message.includes('movimientos asociados')) {
-      await ctx.editMessageText('❌ No se puede eliminar esta categoría porque tiene movimientos asociados.');
+      await ctx.editMessageText(
+        '❌ No se puede eliminar esta categoría porque tiene movimientos asociados.',
+      );
     } else {
       await ctx.editMessageText('❌ Error al eliminar la categoría.');
     }

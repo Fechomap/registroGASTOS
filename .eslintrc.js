@@ -9,6 +9,7 @@ module.exports = {
   ],
   rules: {
     'no-console': ['warn', { allow: ['warn', 'error'] }],
+    'no-var': 'off',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     '@typescript-eslint/no-explicit-any': 'error',
     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],

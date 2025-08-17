@@ -80,16 +80,16 @@ export class UserRepository {
    */
   async getUserCompanies(userId: string) {
     return prisma.userCompany.findMany({
-      where: { 
+      where: {
         userId,
-        isActive: true 
+        isActive: true,
       },
       include: {
-        company: true
+        company: true,
       },
       orderBy: {
-        createdAt: 'asc'
-      }
+        createdAt: 'asc',
+      },
     });
   }
 }

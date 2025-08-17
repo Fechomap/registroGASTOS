@@ -1,11 +1,11 @@
 import { CallbackQueryContext } from 'grammy';
 import { MyContext } from '../../types';
-import { 
-  startExpenseFlow, 
-  processExpenseTypeSelection, 
+import {
+  startExpenseFlow,
+  processExpenseTypeSelection,
   processCompanySelection,
   confirmExpense,
-  saveExpense
+  saveExpense,
 } from '../handlers/conversation.handler';
 import { createMainMenu, getMainMenuMessage } from '../menus/main.menu';
 
@@ -30,13 +30,13 @@ export async function handleExpenseStartCallback(ctx: CallbackQueryContext<MyCon
  */
 export async function handleExpenseTypeCallback(ctx: CallbackQueryContext<MyContext>) {
   const callbackData = ctx.callbackQuery.data;
-  
+
   if (callbackData === 'expense_type_company') {
     await processExpenseTypeSelection(ctx, 'COMPANY');
   } else if (callbackData === 'expense_type_personal') {
     await processExpenseTypeSelection(ctx, 'PERSONAL');
   }
-  
+
   await ctx.answerCallbackQuery();
 }
 
@@ -46,12 +46,12 @@ export async function handleExpenseTypeCallback(ctx: CallbackQueryContext<MyCont
 export async function handleExpenseCompanyCallback(ctx: CallbackQueryContext<MyContext>) {
   const callbackData = ctx.callbackQuery.data;
   const companyId = callbackData?.replace('expense_company_', '');
-  
+
   if (!companyId) {
     await ctx.answerCallbackQuery('❌ Error en la selección de empresa');
     return;
   }
-  
+
   await processCompanySelection(ctx, companyId);
   await ctx.answerCallbackQuery();
 }
@@ -62,13 +62,13 @@ export async function handleExpenseCompanyCallback(ctx: CallbackQueryContext<MyC
 export async function handleCategorySelectCallback(ctx: CallbackQueryContext<MyContext>) {
   const callbackData = ctx.callbackQuery.data;
   let categoryId: string | undefined;
-  
+
   if (callbackData === 'category_select_none') {
     categoryId = undefined;
   } else {
     categoryId = callbackData?.replace('category_select_', '');
   }
-  
+
   await confirmExpense(ctx, categoryId);
   await ctx.answerCallbackQuery();
 }
@@ -86,7 +86,7 @@ export async function handleExpenseConfirmSaveCallback(ctx: CallbackQueryContext
  */
 export async function handleExpenseCancelCallback(ctx: CallbackQueryContext<MyContext>) {
   const user = ctx.session.user;
-  
+
   if (!user) {
     await ctx.answerCallbackQuery('❌ Error de autenticación');
     return;
@@ -94,15 +94,15 @@ export async function handleExpenseCancelCallback(ctx: CallbackQueryContext<MyCo
 
   // Limpiar la conversación
   ctx.session.conversationData = {};
-  
+
   // Volver al menú principal
   const message = getMainMenuMessage(user.firstName, user.role, user.company.name);
-  
+
   await ctx.editMessageText(message, {
     parse_mode: 'Markdown',
-    reply_markup: createMainMenu(user.role)
+    reply_markup: createMainMenu(user.role),
   });
-  
+
   await ctx.answerCallbackQuery('❌ Registro de gasto cancelado');
 }
 
@@ -111,7 +111,7 @@ export async function handleExpenseCancelCallback(ctx: CallbackQueryContext<MyCo
  */
 export async function handleMainMenuCallback(ctx: CallbackQueryContext<MyContext>) {
   const user = ctx.session.user;
-  
+
   if (!user) {
     await ctx.answerCallbackQuery('❌ Error de autenticación');
     return;
@@ -119,13 +119,13 @@ export async function handleMainMenuCallback(ctx: CallbackQueryContext<MyContext
 
   // Limpiar cualquier conversación activa
   ctx.session.conversationData = {};
-  
+
   const message = getMainMenuMessage(user.firstName, user.role, user.company.name);
-  
+
   await ctx.editMessageText(message, {
     parse_mode: 'Markdown',
-    reply_markup: createMainMenu(user.role)
+    reply_markup: createMainMenu(user.role),
   });
-  
+
   await ctx.answerCallbackQuery();
 }

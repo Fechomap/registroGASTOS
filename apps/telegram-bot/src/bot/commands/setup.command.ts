@@ -23,7 +23,9 @@ export async function registerCompanyCommand(ctx: CommandContext<MyContext>) {
     // Verificar si este usuario ya está registrado
     const existingUser = await userRepository.findByTelegramId(telegramId);
     if (existingUser) {
-      await ctx.reply('✅ Ya tienes una cuenta registrada. Usa /ayuda para ver los comandos disponibles.');
+      await ctx.reply(
+        '✅ Ya tienes una cuenta registrada. Usa /ayuda para ver los comandos disponibles.',
+      );
       return;
     }
 
@@ -31,12 +33,12 @@ export async function registerCompanyCommand(ctx: CommandContext<MyContext>) {
     if (args.length < 2) {
       await ctx.reply(
         '🏢 *Solicitar Registro de Empresa*\n\n' +
-        'Solicita el registro de tu empresa al sistema.\n\n' +
-        'Uso: `/register_company [nombre_empresa] [email_empresa]`\n\n' +
-        'Ejemplo: `/register_company "Mi Empresa SA" admin@miempresa.com`\n\n' +
-        '⏳ Tu solicitud será revisada por un administrador del sistema.\n' +
-        '📧 Recibirás una notificación cuando sea aprobada o rechazada.',
-        { parse_mode: 'Markdown' }
+          'Solicita el registro de tu empresa al sistema.\n\n' +
+          'Uso: `/register_company [nombre_empresa] [email_empresa]`\n\n' +
+          'Ejemplo: `/register_company "Mi Empresa SA" admin@miempresa.com`\n\n' +
+          '⏳ Tu solicitud será revisada por un administrador del sistema.\n' +
+          '📧 Recibirás una notificación cuando sea aprobada o rechazada.',
+        { parse_mode: 'Markdown' },
       );
       return;
     }
@@ -73,7 +75,7 @@ export async function registerCompanyCommand(ctx: CommandContext<MyContext>) {
     // Notificar a super admins sobre nueva solicitud
     await notifySystemAdmins(ctx, company);
 
-    const successMessage = (
+    const successMessage =
       '📋 *¡Solicitud Enviada!*\n\n' +
       `🏢 *Empresa:* ${company.name}\n` +
       `📧 *Email:* ${company.email}\n` +
@@ -83,11 +85,9 @@ export async function registerCompanyCommand(ctx: CommandContext<MyContext>) {
       '• Tu solicitud será revisada por un administrador del sistema\n' +
       '• Recibirás una notificación cuando sea aprobada o rechazada\n' +
       '• Una vez aprobada, podrás usar todos los comandos del bot\n\n' +
-      '📧 *Mantente atento a las notificaciones en este chat.*'
-    );
+      '📧 *Mantente atento a las notificaciones en este chat.*';
 
     await ctx.reply(successMessage, { parse_mode: 'Markdown' });
-
   } catch (error) {
     console.error('Error en comando setup:', error);
     await ctx.reply('❌ Error al configurar la empresa. Intenta nuevamente.');
@@ -100,13 +100,13 @@ export async function registerCompanyCommand(ctx: CommandContext<MyContext>) {
 async function notifySystemAdmins(ctx: CommandContext<MyContext>, company: any) {
   try {
     const systemAdmins = await systemAdminRepository.findAll();
-    
+
     if (systemAdmins.length === 0) {
       console.warn('No hay super admins configurados para notificar');
       return;
     }
 
-    const message = (
+    const message =
       '🔔 *Nueva Solicitud de Empresa*\n\n' +
       `🏢 *Empresa:* ${company.name}\n` +
       `📧 *Email:* ${company.email}\n` +
@@ -116,8 +116,7 @@ async function notifySystemAdmins(ctx: CommandContext<MyContext>, company: any) 
       '⚡ *Acciones Disponibles:*\n' +
       `✅ \`/approve_company ${company.id}\`\n` +
       `❌ \`/reject_company ${company.id} [razón]\`\n` +
-      `📋 \`/admin_companies\` - Ver todas las pendientes`
-    );
+      `📋 \`/admin_companies\` - Ver todas las pendientes`;
 
     for (const admin of systemAdmins) {
       try {

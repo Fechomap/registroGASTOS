@@ -8,7 +8,7 @@ import { startExpenseFlow } from '../handlers/conversation.handler';
  */
 export async function expenseCommand(ctx: CommandContext<MyContext>) {
   const user = ctx.session.user;
-  
+
   if (!user) {
     await ctx.reply('❌ No estás registrado.');
     return;

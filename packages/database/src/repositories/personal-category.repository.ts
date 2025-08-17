@@ -20,10 +20,7 @@ export class PersonalCategoryRepository {
         userId,
         isActive: true,
       },
-      orderBy: [
-        { order: 'asc' },
-        { name: 'asc' },
-      ],
+      orderBy: [{ order: 'asc' }, { name: 'asc' }],
     });
   }
 

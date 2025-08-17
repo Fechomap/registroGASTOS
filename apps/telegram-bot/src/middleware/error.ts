@@ -1,13 +1,13 @@
 import { NextFunction } from 'grammy';
 import { MyContext } from '../types';
 import { logger, logBotError } from '../utils/logger';
-import { 
-  AppError, 
-  ValidationError, 
-  UnauthorizedError, 
-  ForbiddenError, 
+import {
+  AppError,
+  ValidationError,
+  UnauthorizedError,
+  ForbiddenError,
   NotFoundError,
-  isAppError 
+  isAppError,
 } from '@financial-bot/shared';
 
 /**
@@ -30,15 +30,12 @@ async function handleBotError(ctx: MyContext, error: unknown) {
   const command = ctx.message?.text?.split(' ')[0];
 
   // Log del error
-  logBotError(
-    error instanceof Error ? error : new Error(String(error)),
-    {
-      userId,
-      chatId,
-      command,
-      update: ctx.update,
-    }
-  );
+  logBotError(error instanceof Error ? error : new Error(String(error)), {
+    userId,
+    chatId,
+    command,
+    update: ctx.update,
+  });
 
   let userMessage = '❌ Ocurrió un error inesperado. Intenta nuevamente.';
 
@@ -66,16 +63,16 @@ function handleAppError(error: AppError): string {
   switch (error.constructor) {
     case ValidationError:
       return `❌ Datos inválidos: ${error.message}`;
-    
+
     case UnauthorizedError:
       return '❌ No estás autorizado para realizar esta acción.';
-    
+
     case ForbiddenError:
       return '❌ No tienes permisos para realizar esta acción.';
-    
+
     case NotFoundError:
       return `❌ ${error.message}`;
-    
+
     default:
       return `❌ ${error.message}`;
   }

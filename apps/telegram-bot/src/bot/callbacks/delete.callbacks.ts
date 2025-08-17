@@ -15,7 +15,7 @@ export async function handleDeleteConfirmation(ctx: CallbackQueryContext<MyConte
   try {
     // Obtener información del movimiento antes de eliminarlo
     const movement = await movementRepository.findById(movementId);
-    
+
     if (!movement) {
       await ctx.editMessageText('❌ Movimiento no encontrado.');
       await ctx.answerCallbackQuery();
@@ -32,7 +32,7 @@ export async function handleDeleteConfirmation(ctx: CallbackQueryContext<MyConte
     // Eliminar el movimiento
     await movementRepository.delete(movementId);
 
-    const successMessage = (
+    const successMessage =
       `✅ *Movimiento Eliminado*\n\n` +
       `🏷️ *Folio:* ${movement.folio}\n` +
       `💰 *Monto:* ${formatCurrency(Number(movement.amount))}\n` +
@@ -40,11 +40,9 @@ export async function handleDeleteConfirmation(ctx: CallbackQueryContext<MyConte
       `📂 *Categoría:* ${movement.category?.name || 'Sin categoría'}\n` +
       `📅 *Fecha:* ${formatDate(movement.date)}\n` +
       `📊 *Tipo:* ${movement.type === 'EXPENSE' ? '💸 Gasto' : '💰 Ingreso'}\n\n` +
-      `🗑️ El movimiento ha sido eliminado permanentemente.`
-    );
+      `🗑️ El movimiento ha sido eliminado permanentemente.`;
 
     await ctx.editMessageText(successMessage, { parse_mode: 'Markdown' });
-
   } catch (error) {
     console.error('Error eliminando movimiento:', error);
     await ctx.editMessageText('❌ Error al eliminar el movimiento. Intenta nuevamente.');

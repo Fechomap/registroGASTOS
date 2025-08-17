@@ -19,10 +19,10 @@ export async function editCommand(ctx: CommandContext<MyContext>) {
   if (!folio) {
     await ctx.reply(
       '📝 *Editar Movimiento*\n\n' +
-      'Usa: `/editar [folio]`\n\n' +
-      'Ejemplo: `/editar ABC123`\n\n' +
-      'Para ver tus folios usa: `/movimientos`',
-      { parse_mode: 'Markdown' }
+        'Usa: `/editar [folio]`\n\n' +
+        'Ejemplo: `/editar ABC123`\n\n' +
+        'Para ver tus folios usa: `/movimientos`',
+      { parse_mode: 'Markdown' },
     );
     return;
   }
@@ -31,14 +31,13 @@ export async function editCommand(ctx: CommandContext<MyContext>) {
     // Buscar el movimiento
     const movement = await movementRepository.findByFolioAndCompany(
       folio.toUpperCase(),
-      ctx.session.user.companyId
+      ctx.session.user.companyId,
     );
 
     if (!movement) {
-      await ctx.reply(
-        `❌ No se encontró el movimiento con folio: *${folio.toUpperCase()}*`,
-        { parse_mode: 'Markdown' }
-      );
+      await ctx.reply(`❌ No se encontró el movimiento con folio: *${folio.toUpperCase()}*`, {
+        parse_mode: 'Markdown',
+      });
       return;
     }
 
@@ -49,7 +48,7 @@ export async function editCommand(ctx: CommandContext<MyContext>) {
     }
 
     // Mostrar información actual del movimiento
-    const currentInfo = (
+    const currentInfo =
       `📝 *Editar Movimiento*\n\n` +
       `🏷️ *Folio:* ${movement.folio}\n` +
       `💰 *Monto:* ${formatCurrency(Number(movement.amount))}\n` +
@@ -57,13 +56,12 @@ export async function editCommand(ctx: CommandContext<MyContext>) {
       `📂 *Categoría:* ${movement.category?.name || 'Sin categoría'}\n` +
       `📅 *Fecha:* ${formatDate(movement.date)}\n` +
       `📊 *Tipo:* ${movement.type === 'EXPENSE' ? '💸 Gasto' : '💰 Ingreso'}\n\n` +
-      `¿Qué campo deseas editar?`
-    );
+      `¿Qué campo deseas editar?`;
 
     // Inicializar flujo de edición
     const editFlow: EditFlowData = {
       step: 'select_field',
-      movementId: movement.id
+      movementId: movement.id,
     };
 
     ctx.session.conversationData = { editFlow };
@@ -74,19 +72,16 @@ export async function editCommand(ctx: CommandContext<MyContext>) {
         inline_keyboard: [
           [
             { text: '💰 Monto', callback_data: 'edit_amount' },
-            { text: '📄 Descripción', callback_data: 'edit_description' }
+            { text: '📄 Descripción', callback_data: 'edit_description' },
           ],
           [
             { text: '📂 Categoría', callback_data: 'edit_category' },
-            { text: '📅 Fecha', callback_data: 'edit_date' }
+            { text: '📅 Fecha', callback_data: 'edit_date' },
           ],
-          [
-            { text: '❌ Cancelar', callback_data: 'edit_cancel' }
-          ]
-        ]
-      }
+          [{ text: '❌ Cancelar', callback_data: 'edit_cancel' }],
+        ],
+      },
     });
-
   } catch (error) {
     console.error('Error en comando editar:', error);
     await ctx.reply('❌ Error al buscar el movimiento.');

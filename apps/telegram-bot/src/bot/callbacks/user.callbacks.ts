@@ -15,7 +15,7 @@ export async function handleUserDeleteConfirmation(ctx: CallbackQueryContext<MyC
   try {
     // Obtener información del usuario antes de eliminarlo
     const targetUser = await userRepository.findById(userId);
-    
+
     if (!targetUser) {
       await ctx.editMessageText('❌ Usuario no encontrado.');
       await ctx.answerCallbackQuery();
@@ -38,7 +38,7 @@ export async function handleUserDeleteConfirmation(ctx: CallbackQueryContext<MyC
     // Eliminar el usuario
     await userRepository.delete(userId);
 
-    const successMessage = (
+    const successMessage =
       `✅ *Usuario Eliminado*\n\n` +
       `🗑️ *Usuario eliminado exitosamente:*\n` +
       `👤 *Nombre:* ${targetUser.firstName} ${targetUser.lastName || ''}\n` +
@@ -46,11 +46,9 @@ export async function handleUserDeleteConfirmation(ctx: CallbackQueryContext<MyC
       `👔 *Rol:* ${targetUser.role === 'ADMIN' ? 'Administrador' : 'Operador'}\n` +
       `📅 *Era miembro desde:* ${formatDate(targetUser.createdAt)}\n\n` +
       `🔒 El usuario ya no puede acceder al bot.\n` +
-      `📊 Sus movimientos creados se mantienen para auditoría.`
-    );
+      `📊 Sus movimientos creados se mantienen para auditoría.`;
 
     await ctx.editMessageText(successMessage, { parse_mode: 'Markdown' });
-
   } catch (error) {
     console.error('Error eliminando usuario:', error);
     await ctx.editMessageText('❌ Error al eliminar el usuario. Intenta nuevamente.');

@@ -12,8 +12,12 @@ export async function categoryFlowMiddleware(ctx: MyContext, next: NextFunction)
   }
 
   const categoryFlow = ctx.session.conversationData.categoryFlow as CategoryManagementData;
-  
-  if (categoryFlow.step !== 'name' && categoryFlow.step !== 'icon' && categoryFlow.step !== 'color') {
+
+  if (
+    categoryFlow.step !== 'name' &&
+    categoryFlow.step !== 'icon' &&
+    categoryFlow.step !== 'color'
+  ) {
     return next();
   }
 
@@ -27,12 +31,15 @@ export async function categoryFlowMiddleware(ctx: MyContext, next: NextFunction)
       if (input.length >= 2 && input.length <= 50) {
         // Verificar que no exista otra categoría con el mismo nombre en el mismo nivel
         const existing = await categoryRepository.findByName(
-          ctx.session.user!.companyId, 
-          input, 
-          categoryFlow.parentId
+          ctx.session.user!.companyId,
+          input,
+          categoryFlow.parentId,
         );
-        
-        if (!existing || (categoryFlow.action === 'edit' && existing.id === categoryFlow.categoryId)) {
+
+        if (
+          !existing ||
+          (categoryFlow.action === 'edit' && existing.id === categoryFlow.categoryId)
+        ) {
           isValid = true;
           categoryFlow.name = input;
         } else {
@@ -93,18 +100,18 @@ async function handleCategoryCreation(ctx: MyContext, categoryFlow: CategoryMana
       order: maxOrder + 1,
       isActive: true,
       company: {
-        connect: { id: ctx.session.user!.companyId }
+        connect: { id: ctx.session.user!.companyId },
       },
       ...(categoryFlow.parentId && {
-        parent: { connect: { id: categoryFlow.parentId } }
-      })
+        parent: { connect: { id: categoryFlow.parentId } },
+      }),
     });
 
     let message = '✅ *Categoría Creada*\n\n';
     message += `📂 *Nombre:* ${newCategory.name}\n`;
     message += `🎭 *Icono:* ${newCategory.icon}\n`;
     message += `🎨 *Color:* ${newCategory.color}\n`;
-    
+
     if (categoryFlow.parentId) {
       const parent = await categoryRepository.findById(categoryFlow.parentId);
       message += `🔗 *Categoría padre:* ${parent?.name}\n`;
@@ -114,7 +121,6 @@ async function handleCategoryCreation(ctx: MyContext, categoryFlow: CategoryMana
 
     await ctx.reply(message, { parse_mode: 'Markdown' });
     delete ctx.session.conversationData?.categoryFlow;
-
   } catch (error) {
     console.error('Error creando categoría:', error);
     await ctx.reply('❌ Error al crear la categoría. Intenta nuevamente.');
@@ -124,7 +130,7 @@ async function handleCategoryCreation(ctx: MyContext, categoryFlow: CategoryMana
 async function handleCategoryUpdate(ctx: MyContext, categoryFlow: CategoryManagementData) {
   try {
     const updateData: any = {};
-    
+
     if (categoryFlow.name) updateData.name = categoryFlow.name;
     if (categoryFlow.icon) updateData.icon = categoryFlow.icon;
     if (categoryFlow.color) updateData.color = categoryFlow.color;
@@ -135,7 +141,7 @@ async function handleCategoryUpdate(ctx: MyContext, categoryFlow: CategoryManage
     message += `📂 *Nombre:* ${updatedCategory.name}\n`;
     message += `🎭 *Icono:* ${updatedCategory.icon}\n`;
     message += `🎨 *Color:* ${updatedCategory.color}\n`;
-    
+
     if (updatedCategory.parentId) {
       const parent = await categoryRepository.findById(updatedCategory.parentId);
       message += `🔗 *Categoría padre:* ${parent?.name}\n`;
@@ -145,7 +151,6 @@ async function handleCategoryUpdate(ctx: MyContext, categoryFlow: CategoryManage
 
     await ctx.reply(message, { parse_mode: 'Markdown' });
     delete ctx.session.conversationData?.categoryFlow;
-
   } catch (error) {
     console.error('Error actualizando categoría:', error);
     await ctx.reply('❌ Error al actualizar la categoría. Intenta nuevamente.');
@@ -153,7 +158,11 @@ async function handleCategoryUpdate(ctx: MyContext, categoryFlow: CategoryManage
 }
 
 // Función auxiliar para mostrar el siguiente paso
-export async function showNextStep(ctx: MyContext, categoryFlow: CategoryManagementData, step: 'icon' | 'color' | 'confirm') {
+export async function showNextStep(
+  ctx: MyContext,
+  categoryFlow: CategoryManagementData,
+  step: 'icon' | 'color' | 'confirm',
+) {
   categoryFlow.step = step;
 
   let message = '';
@@ -166,15 +175,15 @@ export async function showNextStep(ctx: MyContext, categoryFlow: CategoryManagem
       message += 'Envía un emoji o texto corto para el icono:\n\n';
       message += '💡 *Ejemplos populares:*\n';
       message += '🍕 🚗 🏠 💼 🎮 📱 ✈️ 🛒 💡 ⚡';
-      
+
       replyMarkup = {
         inline_keyboard: [
           [
             { text: '📂 Usar por defecto', callback_data: 'category_default_icon' },
-            { text: '⏭️ Saltar', callback_data: 'category_skip_icon' }
+            { text: '⏭️ Saltar', callback_data: 'category_skip_icon' },
           ],
-          [{ text: '❌ Cancelar', callback_data: 'category_cancel' }]
-        ]
+          [{ text: '❌ Cancelar', callback_data: 'category_cancel' }],
+        ],
       };
       break;
 
@@ -188,15 +197,15 @@ export async function showNextStep(ctx: MyContext, categoryFlow: CategoryManagem
       message += '• #3357FF (Azul)\n';
       message += '• #FFD700 (Dorado)\n';
       message += '• #800080 (Púrpura)';
-      
+
       replyMarkup = {
         inline_keyboard: [
           [
             { text: '🎨 Usar por defecto', callback_data: 'category_default_color' },
-            { text: '⏭️ Saltar', callback_data: 'category_skip_color' }
+            { text: '⏭️ Saltar', callback_data: 'category_skip_color' },
           ],
-          [{ text: '❌ Cancelar', callback_data: 'category_cancel' }]
-        ]
+          [{ text: '❌ Cancelar', callback_data: 'category_cancel' }],
+        ],
       };
       break;
 
@@ -207,6 +216,6 @@ export async function showNextStep(ctx: MyContext, categoryFlow: CategoryManagem
 
   await ctx.reply(message, {
     parse_mode: 'Markdown',
-    reply_markup: replyMarkup
+    reply_markup: replyMarkup,
   });
 }

@@ -14,7 +14,7 @@ export {
   handleCategorySelectCallback,
   handleExpenseConfirmSaveCallback,
   handleExpenseCancelCallback,
-  handleMainMenuCallback
+  handleMainMenuCallback,
 } from './expense.callbacks';
 
 // Otros callbacks existentes

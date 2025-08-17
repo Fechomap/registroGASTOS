@@ -53,7 +53,7 @@ export class AuditRepository {
       dateFrom?: Date;
       dateTo?: Date;
     },
-    pagination?: { skip?: number; take?: number }
+    pagination?: { skip?: number; take?: number },
   ): Promise<AuditLog[]> {
     const where: Prisma.AuditLogWhereInput = {
       companyId,
@@ -100,7 +100,7 @@ export class AuditRepository {
       userId?: string;
       dateFrom?: Date;
       dateTo?: Date;
-    }
+    },
   ): Promise<number> {
     const where: Prisma.AuditLogWhereInput = {
       companyId,

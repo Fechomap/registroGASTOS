@@ -7,7 +7,7 @@ import { logger, logUserActivity } from '../utils/logger';
  */
 export async function loggingMiddleware(ctx: MyContext, next: NextFunction) {
   const startTime = Date.now();
-  
+
   // Extraer información del contexto
   const userId = ctx.from?.id?.toString();
   const chatId = ctx.chat?.id?.toString();
@@ -27,10 +27,10 @@ export async function loggingMiddleware(ctx: MyContext, next: NextFunction) {
 
   try {
     await next();
-    
+
     // Log de actividad exitosa
     const duration = Date.now() - startTime;
-    
+
     if (messageText?.startsWith('/')) {
       const command = messageText.split(' ')[0];
       logUserActivity('command_executed', {
@@ -50,11 +50,10 @@ export async function loggingMiddleware(ctx: MyContext, next: NextFunction) {
       userId,
       duration,
     });
-    
   } catch (error) {
     // Log de error (el error middleware se encargará del manejo)
     const duration = Date.now() - startTime;
-    
+
     logger.warn('Update processing failed', {
       updateType,
       userId,
@@ -62,7 +61,7 @@ export async function loggingMiddleware(ctx: MyContext, next: NextFunction) {
       duration,
       error: error instanceof Error ? error.message : String(error),
     });
-    
+
     // Re-lanzar el error para que lo maneje el error middleware
     throw error;
   }
@@ -79,21 +78,17 @@ function getUpdateType(ctx: MyContext): string {
     if (ctx.message.voice) return 'voice_message';
     return 'other_message';
   }
-  
+
   if (ctx.callbackQuery) return 'callback_query';
   if (ctx.inlineQuery) return 'inline_query';
-  
+
   return 'unknown';
 }
 
 /**
  * Helper para loggear comandos específicos con datos adicionales
  */
-export function logCommand(
-  ctx: MyContext, 
-  command: string, 
-  data?: Record<string, unknown>
-) {
+export function logCommand(ctx: MyContext, command: string, data?: Record<string, unknown>) {
   logUserActivity('command_started', {
     userId: ctx.from?.id?.toString(),
     chatId: ctx.chat?.id?.toString(),
@@ -111,7 +106,7 @@ export function logCommand(
 export function logPerformance(
   operation: string,
   duration: number,
-  metadata?: Record<string, unknown>
+  metadata?: Record<string, unknown>,
 ) {
   logger.info('Performance metric', {
     operation,

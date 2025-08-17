@@ -10,17 +10,17 @@ import { BOT_MESSAGES } from '@financial-bot/shared';
 export async function authMiddleware(ctx: MyContext, next: NextFunction) {
   // Comandos que no requieren autenticación
   const publicCommands = [
-    '/start', 
-    '/setup_super_admin', 
-    '/register_company', 
-    '/help', 
+    '/start',
+    '/setup_super_admin',
+    '/register_company',
+    '/help',
     '/ayuda',
     '/admin_companies',
     '/approve_company',
-    '/reject_company'
+    '/reject_company',
   ];
   const command = ctx.message?.text?.split(' ')[0];
-  
+
   if (command && publicCommands.includes(command)) {
     return next();
   }
@@ -53,7 +53,11 @@ export async function authMiddleware(ctx: MyContext, next: NextFunction) {
 
     // Verificar que el chatId coincida
     if (user.chatId !== chatId) {
-      logger.warn('ChatId mismatch', { userId: user.id, expectedChatId: user.chatId, actualChatId: chatId });
+      logger.warn('ChatId mismatch', {
+        userId: user.id,
+        expectedChatId: user.chatId,
+        actualChatId: chatId,
+      });
       await ctx.reply('❌ Error de autenticación. Contacta a tu administrador.');
       return;
     }

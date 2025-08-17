@@ -9,7 +9,7 @@ export {
   processExpenseTypeSelection,
   processCompanySelection,
   confirmExpense,
-  saveExpense
+  saveExpense,
 } from './conversation.handler';
 
 // Handler para cambio de modo (archivo legacy - ya no usado)

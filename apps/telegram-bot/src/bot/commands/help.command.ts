@@ -7,32 +7,29 @@ import { isAdmin } from '../../middleware/auth';
  */
 export async function helpCommand(ctx: CommandContext<MyContext>) {
   const user = ctx.session.user;
-  
+
   if (!user) {
     await ctx.reply(
-      '❌ Necesitas estar registrado para ver los comandos.\n' +
-      'Usa /start para comenzar.'
+      '❌ Necesitas estar registrado para ver los comandos.\n' + 'Usa /start para comenzar.',
     );
     return;
   }
 
   const isUserAdmin = isAdmin(ctx);
 
-  let helpMessage = 
+  let helpMessage =
     '📚 <b>Comandos disponibles:</b>\n\n' +
-    
     '🔧 <b>Comandos básicos:</b>\n' +
     '/start - Iniciar bot\n' +
     '/ayuda - Ver esta ayuda\n' +
     '/perfil - Ver información personal\n' +
     '/movimientos - Ver tus movimientos\n\n' +
-    
     '💰 <b>Registro de movimientos:</b>\n' +
     '/gasto [monto] [descripción] - Registrar gasto\n' +
     '   Ejemplo: /gasto 150.50 Comida en restaurante\n';
 
   if (isUserAdmin) {
-    helpMessage += 
+    helpMessage +=
       '/ingreso [monto] [descripción] - Registrar ingreso\n' +
       '   Ejemplo: /ingreso 5000 Venta de producto\n';
   }
@@ -43,7 +40,7 @@ export async function helpCommand(ctx: CommandContext<MyContext>) {
     '• Registro por comando de voz\n';
 
   if (isUserAdmin) {
-    helpMessage += 
+    helpMessage +=
       '\n👨‍💼 <b>Comandos de administrador:</b>\n' +
       '/empresa - Información de la empresa\n' +
       '/usuario_agregar [chatId] [nombre] - Agregar usuario\n' +
@@ -54,29 +51,27 @@ export async function helpCommand(ctx: CommandContext<MyContext>) {
       '/eliminar [folio] - Eliminar movimiento\n' +
       '/categorias - Gestionar categorías\n' +
       '/reporte - Generar reportes\n\n' +
-      
       '📊 <b>Reportes disponibles:</b>\n' +
       '• Movimientos por período\n' +
       '• Resúmenes por usuario\n' +
       '• Exportación a Excel y PDF\n';
   }
 
-  helpMessage += 
+  helpMessage +=
     '\n💡 <b>Consejos:</b>\n' +
     '• Todos los montos deben estar en pesos mexicanos (MXN)\n' +
     '• Los folios se generan automáticamente\n' +
     '• Los administradores reciben notificaciones de nuevos gastos\n';
 
   if (isUserAdmin) {
-    helpMessage += 
+    helpMessage +=
       '• Solo los administradores pueden editar y eliminar movimientos\n' +
       '• Los operadores solo pueden ver sus propios movimientos\n';
   }
 
-  helpMessage += 
-    '\n❓ ¿Necesitas ayuda? Contacta a tu administrador.';
+  helpMessage += '\n❓ ¿Necesitas ayuda? Contacta a tu administrador.';
 
-  await ctx.reply(helpMessage, { 
+  await ctx.reply(helpMessage, {
     parse_mode: 'HTML',
     link_preview_options: { is_disabled: true },
   });

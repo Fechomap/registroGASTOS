@@ -12,24 +12,21 @@ const logFormat = winston.format.combine(
   winston.format.json(),
   winston.format.printf(({ timestamp, level, message, ...meta }) => {
     let logMessage = `${timestamp} [${level.toUpperCase()}]: ${message}`;
-    
+
     if (Object.keys(meta).length > 0) {
       logMessage += ` ${JSON.stringify(meta)}`;
     }
-    
+
     return logMessage;
-  })
+  }),
 );
 
 // Configurar transportes
 const transports: winston.transport[] = [
   new winston.transports.Console({
-    format: isProduction 
+    format: isProduction
       ? logFormat
-      : winston.format.combine(
-          winston.format.colorize(),
-          winston.format.simple()
-        ),
+      : winston.format.combine(winston.format.colorize(), winston.format.simple()),
   }),
 ];
 
@@ -44,7 +41,7 @@ if (isProduction) {
     new winston.transports.File({
       filename: 'logs/combined.log',
       format: logFormat,
-    })
+    }),
   );
 }
 
@@ -57,12 +54,15 @@ export const logger = winston.createLogger({
 });
 
 // Función helper para loggear errores del bot
-export function logBotError(error: Error, context?: {
-  userId?: string;
-  chatId?: string;
-  command?: string;
-  update?: unknown;
-}) {
+export function logBotError(
+  error: Error,
+  context?: {
+    userId?: string;
+    chatId?: string;
+    command?: string;
+    update?: unknown;
+  },
+) {
   logger.error('Bot Error', {
     error: {
       name: error.name,
@@ -74,12 +74,15 @@ export function logBotError(error: Error, context?: {
 }
 
 // Función helper para loggear actividad del usuario
-export function logUserActivity(action: string, context: {
-  userId?: string;
-  chatId?: string;
-  username?: string;
-  data?: unknown;
-}) {
+export function logUserActivity(
+  action: string,
+  context: {
+    userId?: string;
+    chatId?: string;
+    username?: string;
+    data?: unknown;
+  },
+) {
   logger.info('User Activity', {
     action,
     ...context,

@@ -49,7 +49,7 @@ export async function handleAssignCategory(ctx: CallbackQueryContext<MyContext>)
 
       // Actualizar el movimiento con la categoría
       await movementRepository.update(movementId, {
-        category: { connect: { id: category.id } }
+        category: { connect: { id: category.id } },
       });
 
       categoryName = category.name;
@@ -57,12 +57,12 @@ export async function handleAssignCategory(ctx: CallbackQueryContext<MyContext>)
     } else {
       // Remover categoría (establecer como null)
       await movementRepository.update(movementId, {
-        category: { disconnect: true }
+        category: { disconnect: true },
       });
     }
 
     // Mensaje de confirmación actualizado
-    const updatedMessage = 
+    const updatedMessage =
       '✅ <b>Gasto registrado y categorizado</b>\n\n' +
       `📌 <b>Folio:</b> <code>${movement.folio}</code>\n` +
       `💸 <b>Monto:</b> ${formatCurrency(Number(movement.amount))} MXN\n` +
@@ -72,7 +72,6 @@ export async function handleAssignCategory(ctx: CallbackQueryContext<MyContext>)
       `📂 <b>Categoría:</b> ${categoryIcon} ${categoryName}`;
 
     await ctx.editMessageText(updatedMessage, { parse_mode: 'HTML' });
-
   } catch (error) {
     console.error('Error asignando categoría:', error);
     await ctx.editMessageText('❌ Error al asignar la categoría.');

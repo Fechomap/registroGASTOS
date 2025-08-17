@@ -10,7 +10,11 @@ import { formatCurrency, formatDate } from '@financial-bot/shared';
 export async function handleEditFieldSelection(ctx: CallbackQueryContext<MyContext>) {
   if (!ctx.session.user || !ctx.callbackQuery.data) return;
 
-  const field = ctx.callbackQuery.data.replace('edit_', '') as 'amount' | 'description' | 'category' | 'date';
+  const field = ctx.callbackQuery.data.replace('edit_', '') as
+    | 'amount'
+    | 'description'
+    | 'category'
+    | 'date';
   const editFlow = ctx.session.conversationData?.editFlow as EditFlowData;
 
   if (!editFlow) {
@@ -28,37 +32,38 @@ export async function handleEditFieldSelection(ctx: CallbackQueryContext<MyConte
     case 'amount':
       promptMessage = '💰 *Editar Monto*\n\nIngresa el nuevo monto:\nEjemplo: 150.50';
       break;
-    
+
     case 'description':
       promptMessage = '📄 *Editar Descripción*\n\nIngresa la nueva descripción:';
       break;
-    
+
     case 'category':
       // Obtener categorías disponibles
       const categories = await categoryRepository.findByCompany(ctx.session.user.companyId);
-      
+
       promptMessage = '📂 *Editar Categoría*\n\nSelecciona la nueva categoría:';
       replyMarkup = {
         inline_keyboard: [
-          ...categories.map(cat => ([
-            { text: `${cat.icon || '📂'} ${cat.name}`, callback_data: `edit_category_${cat.id}` }
-          ])),
+          ...categories.map(cat => [
+            { text: `${cat.icon || '📂'} ${cat.name}`, callback_data: `edit_category_${cat.id}` },
+          ]),
           [{ text: '🚫 Sin categoría', callback_data: 'edit_category_none' }],
-          [{ text: '⬅️ Volver', callback_data: 'edit_back' }]
-        ]
+          [{ text: '⬅️ Volver', callback_data: 'edit_back' }],
+        ],
       };
       break;
-    
+
     case 'date':
-      promptMessage = '📅 *Editar Fecha*\n\nIngresa la nueva fecha:\nFormato: DD/MM/YYYY\nEjemplo: 15/08/2024';
+      promptMessage =
+        '📅 *Editar Fecha*\n\nIngresa la nueva fecha:\nFormato: DD/MM/YYYY\nEjemplo: 15/08/2024';
       break;
   }
 
   await ctx.editMessageText(promptMessage, {
     parse_mode: 'Markdown',
     reply_markup: replyMarkup || {
-      inline_keyboard: [[{ text: '⬅️ Volver', callback_data: 'edit_back' }]]
-    }
+      inline_keyboard: [[{ text: '⬅️ Volver', callback_data: 'edit_back' }]],
+    },
   });
 
   await ctx.answerCallbackQuery();
@@ -114,7 +119,7 @@ export async function handleEditBack(ctx: CallbackQueryContext<MyContext>) {
   const movement = await movementRepository.findById(editFlow.movementId);
   if (!movement) return;
 
-  const currentInfo = (
+  const currentInfo =
     `📝 *Editar Movimiento*\n\n` +
     `🏷️ *Folio:* ${movement.folio}\n` +
     `💰 *Monto:* ${formatCurrency(Number(movement.amount))}\n` +
@@ -122,8 +127,7 @@ export async function handleEditBack(ctx: CallbackQueryContext<MyContext>) {
     `📂 *Categoría:* ${movement.category?.name || 'Sin categoría'}\n` +
     `📅 *Fecha:* ${formatDate(movement.date)}\n` +
     `📊 *Tipo:* ${movement.type === 'EXPENSE' ? '💸 Gasto' : '💰 Ingreso'}\n\n` +
-    `¿Qué campo deseas editar?`
-  );
+    `¿Qué campo deseas editar?`;
 
   await ctx.editMessageText(currentInfo, {
     parse_mode: 'Markdown',
@@ -131,17 +135,15 @@ export async function handleEditBack(ctx: CallbackQueryContext<MyContext>) {
       inline_keyboard: [
         [
           { text: '💰 Monto', callback_data: 'edit_amount' },
-          { text: '📄 Descripción', callback_data: 'edit_description' }
+          { text: '📄 Descripción', callback_data: 'edit_description' },
         ],
         [
           { text: '📂 Categoría', callback_data: 'edit_category' },
-          { text: '📅 Fecha', callback_data: 'edit_date' }
+          { text: '📅 Fecha', callback_data: 'edit_date' },
         ],
-        [
-          { text: '❌ Cancelar', callback_data: 'edit_cancel' }
-        ]
-      ]
-    }
+        [{ text: '❌ Cancelar', callback_data: 'edit_cancel' }],
+      ],
+    },
   });
 
   await ctx.answerCallbackQuery();
@@ -184,14 +186,13 @@ async function showEditConfirmation(ctx: CallbackQueryContext<MyContext>, editFl
       break;
   }
 
-  const confirmMessage = (
+  const confirmMessage =
     `✏️ *Confirmar Edición*\n\n` +
     `🏷️ *Folio:* ${movement.folio}\n` +
     `📝 *Campo a editar:* ${fieldName}\n\n` +
     `📋 *Valor actual:* ${currentValue}\n` +
     `✨ *Nuevo valor:* ${newValue}\n\n` +
-    `¿Confirmas el cambio?`
-  );
+    `¿Confirmas el cambio?`;
 
   await ctx.editMessageText(confirmMessage, {
     parse_mode: 'Markdown',
@@ -199,10 +200,10 @@ async function showEditConfirmation(ctx: CallbackQueryContext<MyContext>, editFl
       inline_keyboard: [
         [
           { text: '✅ Confirmar', callback_data: 'edit_confirm_yes' },
-          { text: '❌ Cancelar', callback_data: 'edit_confirm_no' }
-        ]
-      ]
-    }
+          { text: '❌ Cancelar', callback_data: 'edit_confirm_no' },
+        ],
+      ],
+    },
   });
 }
 
@@ -210,7 +211,7 @@ async function showEditConfirmation(ctx: CallbackQueryContext<MyContext>, editFl
 async function executeEdit(ctx: CallbackQueryContext<MyContext>, editFlow: EditFlowData) {
   try {
     const updateData: any = {};
-    
+
     switch (editFlow.field) {
       case 'amount':
         updateData.amount = editFlow.newValue;
@@ -229,20 +230,18 @@ async function executeEdit(ctx: CallbackQueryContext<MyContext>, editFlow: EditF
     await movementRepository.update(editFlow.movementId, updateData);
 
     const movement = await movementRepository.findById(editFlow.movementId);
-    
-    const successMessage = (
+
+    const successMessage =
       `✅ *Movimiento Editado*\n\n` +
       `🏷️ *Folio:* ${movement?.folio}\n` +
       `💰 *Monto:* ${formatCurrency(Number(movement?.amount || 0))}\n` +
       `📄 *Descripción:* ${movement?.description}\n` +
       `📂 *Categoría:* ${movement?.category?.name || 'Sin categoría'}\n` +
       `📅 *Fecha:* ${formatDate(movement?.date || new Date())}\n\n` +
-      `¡Cambios guardados exitosamente!`
-    );
+      `¡Cambios guardados exitosamente!`;
 
     await ctx.editMessageText(successMessage, { parse_mode: 'Markdown' });
     delete ctx.session.conversationData?.editFlow;
-
   } catch (error) {
     console.error('Error ejecutando edición:', error);
     await ctx.editMessageText('❌ Error al guardar los cambios. Intenta nuevamente.');

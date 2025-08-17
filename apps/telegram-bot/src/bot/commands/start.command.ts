@@ -20,8 +20,7 @@ export async function startCommand(ctx: CommandContext<MyContext>) {
       // Usuario existente
       if (!user.isActive) {
         await ctx.reply(
-          '❌ Tu cuenta está desactivada.\n' +
-          'Contacta a tu administrador para reactivarla.'
+          '❌ Tu cuenta está desactivada.\n' + 'Contacta a tu administrador para reactivarla.',
         );
         return;
       }
@@ -35,7 +34,7 @@ export async function startCommand(ctx: CommandContext<MyContext>) {
       // Guardar usuario en sesión
       ctx.session.user = user;
 
-      const welcomeMessage = 
+      const welcomeMessage =
         `${BOT_MESSAGES.WELCOME}\n\n` +
         `👋 Hola ${formatUserInfo(user)}!\n\n` +
         `🏢 Empresa: ${user.company.name}\n` +
@@ -43,29 +42,32 @@ export async function startCommand(ctx: CommandContext<MyContext>) {
         `🚀 Usa /ayuda para ver todos los comandos disponibles.`;
 
       await ctx.reply(welcomeMessage, { parse_mode: 'HTML' });
-      
+
       logger.info('User started bot', {
         userId: user.id,
         telegramId: user.telegramId,
         role: user.role,
         companyId: user.companyId,
       });
-      
     } else {
       // Usuario nuevo - necesita ser registrado por un admin
-      const instructions = 
+      const instructions =
         '👋 ¡Bienvenido al Sistema Financiero!\n\n' +
         '📝 Para usar este bot, necesitas ser registrado por un administrador de tu empresa.\n\n' +
         '📋 <b>Instrucciones para el administrador:</b>\n' +
-        '1. Tu Chat ID es: <code>' + chatId + '</code>\n' +
+        '1. Tu Chat ID es: <code>' +
+        chatId +
+        '</code>\n' +
         '2. Comparte este Chat ID con tu administrador\n' +
         '3. El administrador debe usar el comando:\n' +
-        '   <code>/usuario_agregar ' + chatId + ' Tu Nombre</code>\n\n' +
+        '   <code>/usuario_agregar ' +
+        chatId +
+        ' Tu Nombre</code>\n\n' +
         '💡 <b>¿Cómo obtener tu Chat ID?</b>\n' +
         'También puedes obtenerlo enviando un mensaje a @userinfobot\n\n' +
         '❓ Si tienes dudas, contacta a tu administrador.';
 
-      await ctx.reply(instructions, { 
+      await ctx.reply(instructions, {
         parse_mode: 'HTML',
         link_preview_options: { is_disabled: true },
       });
@@ -78,7 +80,6 @@ export async function startCommand(ctx: CommandContext<MyContext>) {
         lastName: userInfo.last_name,
       });
     }
-
   } catch (error) {
     logger.error('Error in start command:', error);
     await ctx.reply(BOT_MESSAGES.ERROR_GENERIC);

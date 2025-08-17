@@ -2,15 +2,15 @@ import { CallbackQueryContext } from 'grammy';
 import { MyContext } from '../../types';
 import { companyRepository, userRepository } from '@financial-bot/database';
 import { logger } from '../../utils/logger';
-import { 
-  createNoCompaniesMenu, 
+import {
+  createNoCompaniesMenu,
   getNoCompaniesMessage,
   createCompanyHelpMenu,
   getCompanyHelpMessage,
   getCompanyRegisterMessage,
   createCompanyConfirmMenu,
   getCompanyPendingMessage,
-  createCompanyPendingMenu
+  createCompanyPendingMenu,
 } from '../menus/company-setup.menu';
 import { createMainMenu, getMainMenuMessage } from '../menus/main.menu';
 
@@ -29,20 +29,17 @@ interface CompanyRegistrationData {
  */
 export async function handleCompanyHelp(ctx: CallbackQueryContext<MyContext>) {
   const user = ctx.session.user;
-  
+
   if (!user) {
     await ctx.answerCallbackQuery('❌ Error de autenticación');
     return;
   }
 
-  await ctx.editMessageText(
-    getCompanyHelpMessage(),
-    {
-      parse_mode: 'Markdown',
-      reply_markup: createCompanyHelpMenu()
-    }
-  );
-  
+  await ctx.editMessageText(getCompanyHelpMessage(), {
+    parse_mode: 'Markdown',
+    reply_markup: createCompanyHelpMenu(),
+  });
+
   await ctx.answerCallbackQuery();
 }
 
@@ -51,7 +48,7 @@ export async function handleCompanyHelp(ctx: CallbackQueryContext<MyContext>) {
  */
 export async function handleCompanyRegisterStart(ctx: CallbackQueryContext<MyContext>) {
   const user = ctx.session.user;
-  
+
   if (!user) {
     await ctx.answerCallbackQuery('❌ Error de autenticación');
     return;
@@ -60,18 +57,18 @@ export async function handleCompanyRegisterStart(ctx: CallbackQueryContext<MyCon
   // Verificar si ya tiene una empresa pendiente
   try {
     const existingRequest = await companyRepository.findPendingByUser(user.telegramId);
-    
+
     if (existingRequest) {
       await ctx.editMessageText(
         `⏳ **Ya tienes una solicitud pendiente**\n\n` +
-        `🏢 **Empresa:** ${existingRequest.name}\n` +
-        `📧 **Email:** ${existingRequest.email}\n` +
-        `📅 **Solicitada:** ${existingRequest.createdAt.toLocaleDateString('es-MX')}\n\n` +
-        `💡 Tu solicitud está siendo revisada por nuestro equipo.`,
+          `🏢 **Empresa:** ${existingRequest.name}\n` +
+          `📧 **Email:** ${existingRequest.email}\n` +
+          `📅 **Solicitada:** ${existingRequest.createdAt.toLocaleDateString('es-MX')}\n\n` +
+          `💡 Tu solicitud está siendo revisada por nuestro equipo.`,
         {
           parse_mode: 'Markdown',
-          reply_markup: createCompanyPendingMenu()
-        }
+          reply_markup: createCompanyPendingMenu(),
+        },
       );
       await ctx.answerCallbackQuery('Ya tienes una solicitud pendiente');
       return;
@@ -82,21 +79,18 @@ export async function handleCompanyRegisterStart(ctx: CallbackQueryContext<MyCon
 
   // Iniciar flujo de registro
   const registrationData: CompanyRegistrationData = {
-    step: 'name'
+    step: 'name',
   };
-  
+
   ctx.session.conversationData = { companyRegistration: registrationData };
 
-  await ctx.editMessageText(
-    getCompanyRegisterMessage(),
-    {
-      parse_mode: 'Markdown',
-      reply_markup: {
-        inline_keyboard: [[{ text: '❌ Cancelar', callback_data: 'main_menu' }]]
-      }
-    }
-  );
-  
+  await ctx.editMessageText(getCompanyRegisterMessage(), {
+    parse_mode: 'Markdown',
+    reply_markup: {
+      inline_keyboard: [[{ text: '❌ Cancelar', callback_data: 'main_menu' }]],
+    },
+  });
+
   await ctx.answerCallbackQuery();
 }
 
@@ -105,7 +99,7 @@ export async function handleCompanyRegisterStart(ctx: CallbackQueryContext<MyCon
  */
 export async function handleCompanyCheck(ctx: CallbackQueryContext<MyContext>) {
   const user = ctx.session.user;
-  
+
   if (!user) {
     await ctx.answerCallbackQuery('❌ Error de autenticación');
     return;
@@ -114,48 +108,38 @@ export async function handleCompanyCheck(ctx: CallbackQueryContext<MyContext>) {
   try {
     // Verificar empresas aprobadas
     const userCompanies = await userRepository.getUserCompanies(user.id);
-    
+
     if (userCompanies.length > 0) {
       // Tiene empresas, ir al menú principal
       const company = userCompanies[0].company;
-      
-      await ctx.editMessageText(
-        getMainMenuMessage(user.firstName, user.role, company.name),
-        {
-          parse_mode: 'Markdown',
-          reply_markup: createMainMenu(user.role)
-        }
-      );
+
+      await ctx.editMessageText(getMainMenuMessage(user.firstName, user.role, company.name), {
+        parse_mode: 'Markdown',
+        reply_markup: createMainMenu(user.role),
+      });
       await ctx.answerCallbackQuery('✅ Empresas encontradas');
       return;
     }
 
     // Verificar si tiene solicitudes pendientes
     const pendingRequest = await companyRepository.findPendingByUser(user.telegramId);
-    
+
     if (pendingRequest) {
-      await ctx.editMessageText(
-        getCompanyPendingMessage(pendingRequest.name),
-        {
-          parse_mode: 'Markdown',
-          reply_markup: createCompanyPendingMenu()
-        }
-      );
+      await ctx.editMessageText(getCompanyPendingMessage(pendingRequest.name), {
+        parse_mode: 'Markdown',
+        reply_markup: createCompanyPendingMenu(),
+      });
       await ctx.answerCallbackQuery('Solicitud pendiente encontrada');
       return;
     }
 
     // No tiene empresas ni solicitudes
-    await ctx.editMessageText(
-      getNoCompaniesMessage(user.firstName),
-      {
-        parse_mode: 'Markdown',
-        reply_markup: createNoCompaniesMenu()
-      }
-    );
-    
-    await ctx.answerCallbackQuery('No se encontraron empresas');
+    await ctx.editMessageText(getNoCompaniesMessage(user.firstName), {
+      parse_mode: 'Markdown',
+      reply_markup: createNoCompaniesMenu(),
+    });
 
+    await ctx.answerCallbackQuery('No se encontraron empresas');
   } catch (error) {
     console.error('Error checking companies:', error);
     await ctx.answerCallbackQuery('❌ Error al verificar empresas');
@@ -166,15 +150,16 @@ export async function handleCompanyCheck(ctx: CallbackQueryContext<MyContext>) {
  * Manejar input de texto durante registro de empresa
  */
 export async function handleCompanyRegistrationInput(ctx: MyContext) {
-  const registrationData = ctx.session.conversationData?.companyRegistration as CompanyRegistrationData;
-  
+  const registrationData = ctx.session.conversationData
+    ?.companyRegistration as CompanyRegistrationData;
+
   if (!registrationData) {
     return; // No hay flujo de registro activo
   }
 
   const text = ctx.message?.text;
   const user = ctx.session.user;
-  
+
   if (!text || !user) {
     await ctx.reply('❌ Error en el registro. Intenta nuevamente.');
     return;
@@ -203,13 +188,17 @@ export async function handleCompanyRegistrationInput(ctx: MyContext) {
 /**
  * Manejar entrada del nombre de empresa
  */
-async function handleCompanyNameInput(ctx: MyContext, registrationData: CompanyRegistrationData, name: string) {
+async function handleCompanyNameInput(
+  ctx: MyContext,
+  registrationData: CompanyRegistrationData,
+  name: string,
+) {
   if (name.length < 3) {
     await ctx.reply(
       '❌ **Nombre muy corto**\n\n' +
-      'El nombre de la empresa debe tener al menos 3 caracteres.\n\n' +
-      'Intenta nuevamente:',
-      { parse_mode: 'Markdown' }
+        'El nombre de la empresa debe tener al menos 3 caracteres.\n\n' +
+        'Intenta nuevamente:',
+      { parse_mode: 'Markdown' },
     );
     return;
   }
@@ -217,9 +206,9 @@ async function handleCompanyNameInput(ctx: MyContext, registrationData: CompanyR
   if (name.length > 100) {
     await ctx.reply(
       '❌ **Nombre muy largo**\n\n' +
-      'El nombre de la empresa debe tener máximo 100 caracteres.\n\n' +
-      'Intenta nuevamente:',
-      { parse_mode: 'Markdown' }
+        'El nombre de la empresa debe tener máximo 100 caracteres.\n\n' +
+        'Intenta nuevamente:',
+      { parse_mode: 'Markdown' },
     );
     return;
   }
@@ -230,29 +219,33 @@ async function handleCompanyNameInput(ctx: MyContext, registrationData: CompanyR
 
   await ctx.reply(
     `✅ **Nombre guardado:** ${name}\n\n` +
-    `📧 **Paso 2:** Escribe el email de contacto\n\n` +
-    `Ejemplo: contacto@miempresa.com`,
+      `📧 **Paso 2:** Escribe el email de contacto\n\n` +
+      `Ejemplo: contacto@miempresa.com`,
     {
       parse_mode: 'Markdown',
       reply_markup: {
-        inline_keyboard: [[{ text: '❌ Cancelar', callback_data: 'main_menu' }]]
-      }
-    }
+        inline_keyboard: [[{ text: '❌ Cancelar', callback_data: 'main_menu' }]],
+      },
+    },
   );
 }
 
 /**
  * Manejar entrada del email
  */
-async function handleCompanyEmailInput(ctx: MyContext, registrationData: CompanyRegistrationData, email: string) {
+async function handleCompanyEmailInput(
+  ctx: MyContext,
+  registrationData: CompanyRegistrationData,
+  email: string,
+) {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  
+
   if (!emailRegex.test(email)) {
     await ctx.reply(
       '❌ **Email inválido**\n\n' +
-      'Por favor escribe un email válido.\n\n' +
-      'Ejemplo: contacto@miempresa.com',
-      { parse_mode: 'Markdown' }
+        'Por favor escribe un email válido.\n\n' +
+        'Ejemplo: contacto@miempresa.com',
+      { parse_mode: 'Markdown' },
     );
     return;
   }
@@ -263,34 +256,38 @@ async function handleCompanyEmailInput(ctx: MyContext, registrationData: Company
 
   await ctx.reply(
     `✅ **Email guardado:** ${email}\n\n` +
-    `📱 **Paso 3:** Escribe el teléfono de contacto\n\n` +
-    `Ejemplo: +52 55 1234 5678\n` +
-    `💡 *O escribe "omitir" para saltarlo*`,
+      `📱 **Paso 3:** Escribe el teléfono de contacto\n\n` +
+      `Ejemplo: +52 55 1234 5678\n` +
+      `💡 *O escribe "omitir" para saltarlo*`,
     {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [
           [{ text: '⏭️ Omitir Teléfono', callback_data: 'company_skip_phone' }],
-          [{ text: '❌ Cancelar', callback_data: 'main_menu' }]
-        ]
-      }
-    }
+          [{ text: '❌ Cancelar', callback_data: 'main_menu' }],
+        ],
+      },
+    },
   );
 }
 
 /**
  * Manejar entrada del teléfono
  */
-async function handleCompanyPhoneInput(ctx: MyContext, registrationData: CompanyRegistrationData, phone: string) {
+async function handleCompanyPhoneInput(
+  ctx: MyContext,
+  registrationData: CompanyRegistrationData,
+  phone: string,
+) {
   if (phone.toLowerCase() === 'omitir') {
     registrationData.phone = '';
   } else {
     if (phone.length < 10) {
       await ctx.reply(
         '❌ **Teléfono muy corto**\n\n' +
-        'El teléfono debe tener al menos 10 dígitos.\n\n' +
-        'Intenta nuevamente o escribe "omitir":',
-        { parse_mode: 'Markdown' }
+          'El teléfono debe tener al menos 10 dígitos.\n\n' +
+          'Intenta nuevamente o escribe "omitir":',
+        { parse_mode: 'Markdown' },
       );
       return;
     }
@@ -307,7 +304,8 @@ async function handleCompanyPhoneInput(ctx: MyContext, registrationData: Company
  * Mostrar confirmación de datos
  */
 async function showCompanyConfirmation(ctx: MyContext, registrationData: CompanyRegistrationData) {
-  const message = `📋 **Confirmar Datos de la Empresa**\n\n` +
+  const message =
+    `📋 **Confirmar Datos de la Empresa**\n\n` +
     `🏢 **Nombre:** ${registrationData.name}\n` +
     `📧 **Email:** ${registrationData.email}\n` +
     `📱 **Teléfono:** ${registrationData.phone || 'No especificado'}\n\n` +
@@ -315,7 +313,7 @@ async function showCompanyConfirmation(ctx: MyContext, registrationData: Company
 
   await ctx.reply(message, {
     parse_mode: 'Markdown',
-    reply_markup: createCompanyConfirmMenu()
+    reply_markup: createCompanyConfirmMenu(),
   });
 }
 
@@ -323,9 +321,10 @@ async function showCompanyConfirmation(ctx: MyContext, registrationData: Company
  * Confirmar registro de empresa
  */
 export async function handleCompanyConfirmRegister(ctx: CallbackQueryContext<MyContext>) {
-  const registrationData = ctx.session.conversationData?.companyRegistration as CompanyRegistrationData;
+  const registrationData = ctx.session.conversationData
+    ?.companyRegistration as CompanyRegistrationData;
   const user = ctx.session.user;
-  
+
   if (!registrationData || !user) {
     await ctx.answerCallbackQuery('❌ Error en el registro');
     return;
@@ -344,13 +343,10 @@ export async function handleCompanyConfirmRegister(ctx: CallbackQueryContext<MyC
     // Limpiar datos de registro
     ctx.session.conversationData = {};
 
-    await ctx.editMessageText(
-      getCompanyPendingMessage(company.name),
-      {
-        parse_mode: 'Markdown',
-        reply_markup: createCompanyPendingMenu()
-      }
-    );
+    await ctx.editMessageText(getCompanyPendingMessage(company.name), {
+      parse_mode: 'Markdown',
+      reply_markup: createCompanyPendingMenu(),
+    });
 
     await ctx.answerCallbackQuery('✅ Empresa registrada exitosamente');
 
@@ -359,9 +355,8 @@ export async function handleCompanyConfirmRegister(ctx: CallbackQueryContext<MyC
       userId: user.id,
       companyId: company.id,
       companyName: company.name,
-      requestedBy: user.telegramId
+      requestedBy: user.telegramId,
     });
-
   } catch (error) {
     console.error('Error creating company:', error);
     await ctx.answerCallbackQuery('❌ Error al registrar empresa');
@@ -373,8 +368,9 @@ export async function handleCompanyConfirmRegister(ctx: CallbackQueryContext<MyC
  * Omitir teléfono en registro
  */
 export async function handleCompanySkipPhone(ctx: CallbackQueryContext<MyContext>) {
-  const registrationData = ctx.session.conversationData?.companyRegistration as CompanyRegistrationData;
-  
+  const registrationData = ctx.session.conversationData
+    ?.companyRegistration as CompanyRegistrationData;
+
   if (!registrationData) {
     await ctx.answerCallbackQuery('❌ Error en el registro');
     return;

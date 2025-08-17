@@ -1,6 +1,11 @@
 import { CommandContext } from 'grammy';
 import { MyContext } from '../../types';
-import { systemAdminRepository, companyRepository, userRepository, categoryRepository } from '@financial-bot/database';
+import {
+  systemAdminRepository,
+  companyRepository,
+  userRepository,
+  categoryRepository,
+} from '@financial-bot/database';
 import { CompanyStatus } from '@financial-bot/database';
 
 /**
@@ -9,7 +14,7 @@ import { CompanyStatus } from '@financial-bot/database';
  */
 export async function adminCompaniesCommand(ctx: CommandContext<MyContext>) {
   const telegramId = ctx.from?.id.toString();
-  
+
   if (!telegramId) {
     await ctx.reply('❌ No se pudo obtener información de tu cuenta.');
     return;
@@ -24,14 +29,14 @@ export async function adminCompaniesCommand(ctx: CommandContext<MyContext>) {
     }
 
     const pendingCompanies = await companyRepository.findPendingCompanies();
-    
+
     if (pendingCompanies.length === 0) {
       await ctx.reply('✅ No hay empresas pendientes de aprobación.');
       return;
     }
 
     let message = '🏢 *Empresas Pendientes de Aprobación*\n\n';
-    
+
     for (const company of pendingCompanies) {
       const createdDate = company.createdAt.toLocaleDateString('es-MX');
       message += `📋 *ID:* \`${company.id}\`\n`;
@@ -45,7 +50,6 @@ export async function adminCompaniesCommand(ctx: CommandContext<MyContext>) {
     }
 
     await ctx.reply(message, { parse_mode: 'Markdown' });
-
   } catch (error) {
     console.error('Error en admin_companies:', error);
     await ctx.reply('❌ Error al obtener las empresas pendientes.');
@@ -58,7 +62,7 @@ export async function adminCompaniesCommand(ctx: CommandContext<MyContext>) {
  */
 export async function approveCompanyCommand(ctx: CommandContext<MyContext>) {
   const telegramId = ctx.from?.id.toString();
-  
+
   if (!telegramId) {
     await ctx.reply('❌ No se pudo obtener información de tu cuenta.');
     return;
@@ -74,12 +78,14 @@ export async function approveCompanyCommand(ctx: CommandContext<MyContext>) {
 
     const args = ctx.match?.toString().trim();
     if (!args) {
-      await ctx.reply('❌ Debes especificar el ID de la empresa.\n\nUso: `/approve_company [company_id]`');
+      await ctx.reply(
+        '❌ Debes especificar el ID de la empresa.\n\nUso: `/approve_company [company_id]`',
+      );
       return;
     }
 
     const companyId = args;
-    
+
     // Verificar que la empresa existe y está pendiente
     const company = await companyRepository.findById(companyId);
     if (!company) {
@@ -111,21 +117,19 @@ export async function approveCompanyCommand(ctx: CommandContext<MyContext>) {
       await createDefaultCategories(approvedCompany.id);
     }
 
-    const successMessage = (
+    const successMessage =
       '✅ *¡Empresa Aprobada!*\n\n' +
       `🏢 *Empresa:* ${approvedCompany.name}\n` +
       `📧 *Email:* ${approvedCompany.email}\n` +
       `✅ *Estado:* Aprobada\n` +
       `👤 *Aprobada por:* Super Admin\n\n` +
       '🎉 *La empresa ya puede usar el sistema.*\n' +
-      '📧 *Se enviará notificación al solicitante.*'
-    );
+      '📧 *Se enviará notificación al solicitante.*';
 
     await ctx.reply(successMessage, { parse_mode: 'Markdown' });
 
     // Notificar al solicitante
     await notifyCompanyApproval(ctx, approvedCompany);
-
   } catch (error) {
     console.error('Error en approve_company:', error);
     await ctx.reply('❌ Error al aprobar la empresa. Intenta nuevamente.');
@@ -138,7 +142,7 @@ export async function approveCompanyCommand(ctx: CommandContext<MyContext>) {
  */
 export async function rejectCompanyCommand(ctx: CommandContext<MyContext>) {
   const telegramId = ctx.from?.id.toString();
-  
+
   if (!telegramId) {
     await ctx.reply('❌ No se pudo obtener información de tu cuenta.');
     return;
@@ -156,15 +160,15 @@ export async function rejectCompanyCommand(ctx: CommandContext<MyContext>) {
     if (!args || args.length < 2) {
       await ctx.reply(
         '❌ Debes especificar el ID de la empresa y la razón del rechazo.\n\n' +
-        'Uso: `/reject_company [company_id] [razón del rechazo]`\n\n' +
-        'Ejemplo: `/reject_company abc123 Información incompleta`'
+          'Uso: `/reject_company [company_id] [razón del rechazo]`\n\n' +
+          'Ejemplo: `/reject_company abc123 Información incompleta`',
       );
       return;
     }
 
     const companyId = args[0];
     const rejectionReason = args.slice(1).join(' ');
-    
+
     // Verificar que la empresa existe y está pendiente
     const company = await companyRepository.findById(companyId);
     if (!company) {
@@ -180,20 +184,18 @@ export async function rejectCompanyCommand(ctx: CommandContext<MyContext>) {
     // Rechazar la empresa
     const rejectedCompany = await companyRepository.rejectCompany(companyId, rejectionReason);
 
-    const successMessage = (
+    const successMessage =
       '❌ *Empresa Rechazada*\n\n' +
       `🏢 *Empresa:* ${rejectedCompany.name}\n` +
       `📧 *Email:* ${rejectedCompany.email}\n` +
       `❌ *Estado:* Rechazada\n` +
       `📝 *Razón:* ${rejectionReason}\n\n` +
-      '📧 *Se enviará notificación al solicitante.*'
-    );
+      '📧 *Se enviará notificación al solicitante.*';
 
     await ctx.reply(successMessage, { parse_mode: 'Markdown' });
 
     // Notificar al solicitante
     await notifyCompanyRejection(ctx, rejectedCompany, rejectionReason);
-
   } catch (error) {
     console.error('Error en reject_company:', error);
     await ctx.reply('❌ Error al rechazar la empresa. Intenta nuevamente.');
@@ -231,7 +233,7 @@ async function notifyCompanyApproval(ctx: CommandContext<MyContext>, company: an
   if (!company.requestedBy) return;
 
   try {
-    const message = (
+    const message =
       '🎉 *¡Tu empresa ha sido aprobada!*\n\n' +
       `🏢 *Empresa:* ${company.name}\n` +
       `✅ *Estado:* Aprobada\n\n` +
@@ -239,8 +241,7 @@ async function notifyCompanyApproval(ctx: CommandContext<MyContext>, company: an
       '• Usa `/ayuda` para ver todos los comandos disponibles\n' +
       '• Empieza registrando gastos con `/gasto`\n' +
       '• Configura categorías con `/categorias`\n\n' +
-      '¡Bienvenido al sistema de gestión financiera!'
-    );
+      '¡Bienvenido al sistema de gestión financiera!';
 
     await ctx.api.sendMessage(company.requestedBy, message, { parse_mode: 'Markdown' });
   } catch (error) {
@@ -251,11 +252,15 @@ async function notifyCompanyApproval(ctx: CommandContext<MyContext>, company: an
 /**
  * Notificar rechazo de empresa
  */
-async function notifyCompanyRejection(ctx: CommandContext<MyContext>, company: any, reason: string) {
+async function notifyCompanyRejection(
+  ctx: CommandContext<MyContext>,
+  company: any,
+  reason: string,
+) {
   if (!company.requestedBy) return;
 
   try {
-    const message = (
+    const message =
       '❌ *Tu solicitud de empresa ha sido rechazada*\n\n' +
       `🏢 *Empresa:* ${company.name}\n` +
       `📝 *Razón:* ${reason}\n\n` +
@@ -263,8 +268,7 @@ async function notifyCompanyRejection(ctx: CommandContext<MyContext>, company: a
       '• Revisa la información proporcionada\n' +
       '• Corrige los datos necesarios\n' +
       '• Solicita un nuevo registro con `/register_company`\n\n' +
-      'Si tienes dudas, contacta al administrador del sistema.'
-    );
+      'Si tienes dudas, contacta al administrador del sistema.';
 
     await ctx.api.sendMessage(company.requestedBy, message, { parse_mode: 'Markdown' });
   } catch (error) {

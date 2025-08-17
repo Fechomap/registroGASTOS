@@ -51,11 +51,13 @@ if (REDIS_URL) {
 bot.use(hydrate());
 
 // Sesiones
-bot.use(session({
-  initial: (): SessionData => ({ user: undefined, conversationData: {} }),
-  // Usar Redis si está disponible, sino memoria
-  storage: redisClient ? undefined : undefined, // TODO: Implementar RedisAdapter
-}));
+bot.use(
+  session({
+    initial: (): SessionData => ({ user: undefined, conversationData: {} }),
+    // Usar Redis si está disponible, sino memoria
+    storage: redisClient ? undefined : undefined, // TODO: Implementar RedisAdapter
+  }),
+);
 
 // Conversaciones
 bot.use(conversations());
@@ -70,7 +72,7 @@ setupCommands(bot);
 setupScenes(bot);
 
 // Manejo de errores no capturados
-bot.catch((err) => {
+bot.catch(err => {
   logger.error('Error no capturado en el bot:', err);
 });
 
@@ -88,7 +90,7 @@ async function startBot() {
       // Modo polling para desarrollo
       await bot.api.deleteWebhook();
       bot.start({
-        onStart: (botInfo) => {
+        onStart: botInfo => {
           logger.info(`✅ Bot iniciado: @${botInfo.username}`);
         },
       });
@@ -119,7 +121,7 @@ process.once('SIGTERM', async () => {
 });
 
 // Iniciar el bot
-startBot().catch((error) => {
+startBot().catch(error => {
   logger.error('❌ Error fatal:', error);
   process.exit(1);
 });

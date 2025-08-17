@@ -8,7 +8,7 @@ import { formatUserInfo, formatCurrency, formatDate } from '@financial-bot/share
  */
 export async function profileCommand(ctx: CommandContext<MyContext>) {
   const user = ctx.session.user;
-  
+
   if (!user) {
     await ctx.reply('❌ No estás registrado.');
     return;
@@ -17,30 +17,27 @@ export async function profileCommand(ctx: CommandContext<MyContext>) {
   try {
     // Obtener estadísticas del usuario
     const stats = await getUserStats(user.id, user.companyId);
-    
-    let profileMessage = 
+
+    let profileMessage =
       '👤 <b>Mi Perfil</b>\n\n' +
-      
       `📝 <b>Información personal:</b>\n` +
       `• Nombre: ${formatUserInfo(user)}\n` +
       `• Rol: ${user.role === 'ADMIN' ? '👨‍💼 Administrador' : '👤 Operador'}\n` +
       `• Miembro desde: ${formatDate(user.createdAt, 'long')}\n\n` +
-      
       `🏢 <b>Empresa:</b>\n` +
       `• ${user.company.name}\n\n` +
-      
       `📊 <b>Mis estadísticas:</b>\n` +
       `• Total de movimientos: ${stats.totalMovements}\n` +
       `• Gastos registrados: ${stats.totalExpenses}\n` +
       `• Monto total en gastos: ${formatCurrency(stats.totalExpenseAmount)}\n`;
 
     if (user.role === 'ADMIN') {
-      profileMessage += 
+      profileMessage +=
         `• Ingresos registrados: ${stats.totalIncomes}\n` +
         `• Monto total en ingresos: ${formatCurrency(stats.totalIncomeAmount)}\n`;
     }
 
-    profileMessage += 
+    profileMessage +=
       `\n📅 <b>Este mes:</b>\n` +
       `• Movimientos: ${stats.thisMonthMovements}\n` +
       `• Gastos: ${formatCurrency(stats.thisMonthExpenses)}\n`;
@@ -50,13 +47,11 @@ export async function profileCommand(ctx: CommandContext<MyContext>) {
     }
 
     if (stats.lastMovementDate) {
-      profileMessage += 
-        `\n🕐 <b>Último movimiento:</b>\n` +
-        `${formatDate(stats.lastMovementDate, 'long')}`;
+      profileMessage +=
+        `\n🕐 <b>Último movimiento:</b>\n` + `${formatDate(stats.lastMovementDate, 'long')}`;
     }
 
     await ctx.reply(profileMessage, { parse_mode: 'HTML' });
-
   } catch (error) {
     console.error('Error in profile command:', error);
     await ctx.reply('❌ Error al obtener información del perfil.');
@@ -89,11 +84,11 @@ async function getUserStats(userId: string, companyId: string) {
   const totalMovements = allMovements.length;
   const totalExpenses = allMovements.filter(m => m.type === 'EXPENSE').length;
   const totalIncomes = allMovements.filter(m => m.type === 'INCOME').length;
-  
+
   const totalExpenseAmount = allMovements
     .filter(m => m.type === 'EXPENSE')
     .reduce((sum, m) => sum + Number(m.amount), 0);
-    
+
   const totalIncomeAmount = allMovements
     .filter(m => m.type === 'INCOME')
     .reduce((sum, m) => sum + Number(m.amount), 0);
@@ -101,7 +96,7 @@ async function getUserStats(userId: string, companyId: string) {
   const thisMonthExpenses = thisMonthMovements
     .filter(m => m.type === 'EXPENSE')
     .reduce((sum, m) => sum + Number(m.amount), 0);
-    
+
   const thisMonthIncomes = thisMonthMovements
     .filter(m => m.type === 'INCOME')
     .reduce((sum, m) => sum + Number(m.amount), 0);

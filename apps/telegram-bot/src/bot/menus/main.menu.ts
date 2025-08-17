@@ -34,17 +34,15 @@ export function createMainMenu(userRole: 'ADMIN' | 'OPERATOR') {
 /**
  * Mensaje de bienvenida con menú principal
  */
-export function getMainMenuMessage(
-  userName: string, 
-  userRole: string, 
-  companyName: string
-) {
+export function getMainMenuMessage(userName: string, userRole: string, companyName: string) {
   const roleText = userRole === 'ADMIN' ? '👑 Administrador' : '👤 Operador';
-  
-  return `🏢 **${companyName}**\n\n` +
+
+  return (
+    `🏢 **${companyName}**\n\n` +
     `¡Hola ${userName}! (${roleText})\n\n` +
     `🎯 **¿Qué deseas hacer?**\n` +
-    `Selecciona una opción del menú:`;
+    `Selecciona una opción del menú:`
+  );
 }
 
 /**
@@ -108,4 +106,3 @@ export function createProfileMenu() {
     .row()
     .text('◀️ Menú Principal', 'main_menu');
 }
-

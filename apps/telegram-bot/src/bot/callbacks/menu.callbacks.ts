@@ -1,15 +1,15 @@
 import { CallbackQueryContext } from 'grammy';
 import { MyContext } from '../../types';
 import { userRepository } from '@financial-bot/database';
-import { 
-  createMainMenu, 
-  getMainMenuMessage, 
-  createAdminMenu, 
-  createUsersMenu, 
-  createReportsMenu, 
-  createProfileMenu 
+import {
+  createMainMenu,
+  getMainMenuMessage,
+  createAdminMenu,
+  createUsersMenu,
+  createReportsMenu,
+  createProfileMenu,
 } from '../menus/main.menu';
-import { 
+import {
   handleMainExpenseCallback,
   handleExpenseStartCallback,
   handleExpenseTypeCallback,
@@ -17,14 +17,14 @@ import {
   handleCategorySelectCallback,
   handleExpenseConfirmSaveCallback,
   handleExpenseCancelCallback,
-  handleMainMenuCallback
+  handleMainMenuCallback,
 } from './expense.callbacks';
 import {
   handleCompanyHelp,
   handleCompanyRegisterStart,
   handleCompanyCheck,
   handleCompanyConfirmRegister,
-  handleCompanySkipPhone
+  handleCompanySkipPhone,
 } from '../handlers/company-setup.handler';
 
 /**
@@ -32,7 +32,7 @@ import {
  */
 export async function handleMenuCallback(ctx: CallbackQueryContext<MyContext>) {
   const data = ctx.callbackQuery.data;
-  
+
   try {
     switch (data) {
       case 'main_menu':
@@ -65,7 +65,7 @@ export async function handleMenuCallback(ctx: CallbackQueryContext<MyContext>) {
       case 'main_refresh':
         await handleMainMenuCallback(ctx);
         break;
-      
+
       // Nuevos callbacks de expense
       case 'expense_start':
         await handleExpenseStartCallback(ctx);
@@ -98,20 +98,20 @@ export async function handleMenuCallback(ctx: CallbackQueryContext<MyContext>) {
       case 'company_skip_phone':
         await handleCompanySkipPhone(ctx);
         break;
-        
+
       default:
         // Manejar selección de categorías
         if (data?.startsWith('category_select_')) {
           await handleCategorySelectCallback(ctx);
           return;
         }
-        
+
         // Manejar selección de empresa
         if (data?.startsWith('expense_company_')) {
           await handleExpenseCompanyCallback(ctx);
           return;
         }
-        
+
         await ctx.answerCallbackQuery('Opción no reconocida');
     }
   } catch (error) {
@@ -125,7 +125,7 @@ export async function handleMenuCallback(ctx: CallbackQueryContext<MyContext>) {
  */
 async function showMainMenu(ctx: CallbackQueryContext<MyContext>) {
   const telegramId = ctx.from?.id.toString();
-  
+
   if (!telegramId) {
     await ctx.answerCallbackQuery('❌ Error de identificación');
     return;
@@ -140,14 +140,16 @@ async function showMainMenu(ctx: CallbackQueryContext<MyContext>) {
   try {
     // Verificar si el usuario tiene empresas
     const userCompanies = await userRepository.getUserCompanies(user.id);
-    
+
     if (userCompanies.length === 0) {
       // No tiene empresas, mostrar menú de registro
-      const { createNoCompaniesMenu, getNoCompaniesMessage } = await import('../menus/company-setup.menu');
-      
+      const { createNoCompaniesMenu, getNoCompaniesMessage } = await import(
+        '../menus/company-setup.menu'
+      );
+
       await ctx.editMessageText(getNoCompaniesMessage(user.firstName), {
         reply_markup: createNoCompaniesMenu(),
-        parse_mode: 'Markdown'
+        parse_mode: 'Markdown',
       });
       await ctx.answerCallbackQuery();
       return;
@@ -160,16 +162,14 @@ async function showMainMenu(ctx: CallbackQueryContext<MyContext>) {
 
     await ctx.editMessageText(message, {
       reply_markup: keyboard,
-      parse_mode: 'Markdown'
+      parse_mode: 'Markdown',
     });
     await ctx.answerCallbackQuery();
-
   } catch (error) {
     console.error('Error in showMainMenu:', error);
     await ctx.answerCallbackQuery('❌ Error al cargar el menú');
   }
 }
-
 
 /**
  * Mostrar movimientos del usuario
@@ -177,14 +177,17 @@ async function showMainMenu(ctx: CallbackQueryContext<MyContext>) {
 async function showMovements(ctx: CallbackQueryContext<MyContext>) {
   // TODO: Implementar vista de movimientos
   await ctx.answerCallbackQuery('🚧 Función en desarrollo');
-  
-  const message = `📊 **Mis Movimientos**\n\n` +
+
+  const message =
+    `📊 **Mis Movimientos**\n\n` +
     `🚧 Esta función está en desarrollo.\n` +
     `Próximamente podrás ver todos tus movimientos aquí.`;
 
   await ctx.editMessageText(message, {
-    reply_markup: { inline_keyboard: [[{ text: '◀️ Menú Principal', callback_data: 'main_menu' }]] },
-    parse_mode: 'Markdown'
+    reply_markup: {
+      inline_keyboard: [[{ text: '◀️ Menú Principal', callback_data: 'main_menu' }]],
+    },
+    parse_mode: 'Markdown',
   });
 }
 
@@ -193,12 +196,11 @@ async function showMovements(ctx: CallbackQueryContext<MyContext>) {
  */
 async function showProfile(ctx: CallbackQueryContext<MyContext>) {
   const keyboard = createProfileMenu();
-  const message = `👤 **Mi Perfil**\n\n` +
-    `Gestiona tu información personal y configuración:`;
+  const message = `👤 **Mi Perfil**\n\n` + `Gestiona tu información personal y configuración:`;
 
   await ctx.editMessageText(message, {
     reply_markup: keyboard,
-    parse_mode: 'Markdown'
+    parse_mode: 'Markdown',
   });
   await ctx.answerCallbackQuery();
 }
@@ -207,7 +209,8 @@ async function showProfile(ctx: CallbackQueryContext<MyContext>) {
  * Mostrar ayuda
  */
 async function showHelp(ctx: CallbackQueryContext<MyContext>) {
-  const message = `❓ **Ayuda del Financial Bot**\n\n` +
+  const message =
+    `❓ **Ayuda del Financial Bot**\n\n` +
     `**Comandos principales:**\n` +
     `• \`/menu\` - Menú principal\n` +
     `• \`/gasto [monto] [descripción]\` - Registro rápido\n` +
@@ -219,8 +222,10 @@ async function showHelp(ctx: CallbackQueryContext<MyContext>) {
     `Contacta a tu administrador para ayuda adicional.`;
 
   await ctx.editMessageText(message, {
-    reply_markup: { inline_keyboard: [[{ text: '◀️ Menú Principal', callback_data: 'main_menu' }]] },
-    parse_mode: 'Markdown'
+    reply_markup: {
+      inline_keyboard: [[{ text: '◀️ Menú Principal', callback_data: 'main_menu' }]],
+    },
+    parse_mode: 'Markdown',
   });
   await ctx.answerCallbackQuery();
 }
@@ -230,12 +235,11 @@ async function showHelp(ctx: CallbackQueryContext<MyContext>) {
  */
 async function showAdminMenu(ctx: CallbackQueryContext<MyContext>) {
   const keyboard = createAdminMenu();
-  const message = `⚙️ **Panel de Administración**\n\n` +
-    `Gestiona tu empresa y usuarios:`;
+  const message = `⚙️ **Panel de Administración**\n\n` + `Gestiona tu empresa y usuarios:`;
 
   await ctx.editMessageText(message, {
     reply_markup: keyboard,
-    parse_mode: 'Markdown'
+    parse_mode: 'Markdown',
   });
   await ctx.answerCallbackQuery();
 }
@@ -245,12 +249,11 @@ async function showAdminMenu(ctx: CallbackQueryContext<MyContext>) {
  */
 async function showReportsMenu(ctx: CallbackQueryContext<MyContext>) {
   const keyboard = createReportsMenu();
-  const message = `📈 **Generar Reportes**\n\n` +
-    `Selecciona el tipo de reporte que necesitas:`;
+  const message = `📈 **Generar Reportes**\n\n` + `Selecciona el tipo de reporte que necesitas:`;
 
   await ctx.editMessageText(message, {
     reply_markup: keyboard,
-    parse_mode: 'Markdown'
+    parse_mode: 'Markdown',
   });
   await ctx.answerCallbackQuery();
 }
@@ -260,12 +263,11 @@ async function showReportsMenu(ctx: CallbackQueryContext<MyContext>) {
  */
 async function showUsersMenu(ctx: CallbackQueryContext<MyContext>) {
   const keyboard = createUsersMenu();
-  const message = `👥 **Gestión de Usuarios**\n\n` +
-    `Administra los usuarios de tu empresa:`;
+  const message = `👥 **Gestión de Usuarios**\n\n` + `Administra los usuarios de tu empresa:`;
 
   await ctx.editMessageText(message, {
     reply_markup: keyboard,
-    parse_mode: 'Markdown'
+    parse_mode: 'Markdown',
   });
   await ctx.answerCallbackQuery();
 }
@@ -276,14 +278,16 @@ async function showUsersMenu(ctx: CallbackQueryContext<MyContext>) {
 async function showCategoriesMenu(ctx: CallbackQueryContext<MyContext>) {
   // TODO: Implementar menú de categorías
   await ctx.answerCallbackQuery('🚧 Función en desarrollo');
-  
-  const message = `📋 **Gestión de Categorías**\n\n` +
+
+  const message =
+    `📋 **Gestión de Categorías**\n\n` +
     `🚧 Esta función está en desarrollo.\n` +
     `Próximamente podrás gestionar categorías aquí.`;
 
   await ctx.editMessageText(message, {
-    reply_markup: { inline_keyboard: [[{ text: '◀️ Menú Principal', callback_data: 'main_menu' }]] },
-    parse_mode: 'Markdown'
+    reply_markup: {
+      inline_keyboard: [[{ text: '◀️ Menú Principal', callback_data: 'main_menu' }]],
+    },
+    parse_mode: 'Markdown',
   });
 }
-

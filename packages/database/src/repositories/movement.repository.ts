@@ -1,4 +1,12 @@
-import { Movement, Prisma, MovementType, Category, User, Company, Attachment } from '@prisma/client';
+import {
+  Movement,
+  Prisma,
+  MovementType,
+  Category,
+  User,
+  Company,
+  Attachment,
+} from '@prisma/client';
 import prisma from '../client';
 
 export type MovementWithRelations = Movement & {
@@ -55,11 +63,14 @@ export class MovementRepository {
     });
   }
 
-  async findByFolioAndCompany(folio: string, companyId: string): Promise<MovementWithRelations | null> {
+  async findByFolioAndCompany(
+    folio: string,
+    companyId: string,
+  ): Promise<MovementWithRelations | null> {
     return prisma.movement.findFirst({
-      where: { 
+      where: {
         folio,
-        companyId 
+        companyId,
       },
       include: {
         user: true,
@@ -112,6 +123,7 @@ export class MovementRepository {
       include: {
         user: true,
         category: true,
+        company: true,
         attachments: true,
       },
       orderBy: { date: 'desc' },
@@ -154,7 +166,7 @@ export class MovementRepository {
     const today = new Date();
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, '0');
-    
+
     const lastMovement = await prisma.movement.findFirst({
       where: {
         companyId,
@@ -177,7 +189,7 @@ export class MovementRepository {
   async getDailySummary(companyId: string, date: Date) {
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
-    
+
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
 
@@ -188,12 +200,12 @@ export class MovementRepository {
     });
 
     const totalExpenses = movements
-      .filter(m => m.type === MovementType.EXPENSE)
-      .reduce((sum, m) => sum + Number(m.amount), 0);
+      .filter((m: MovementWithRelations) => m.type === MovementType.EXPENSE)
+      .reduce((sum: number, m: MovementWithRelations) => sum + Number(m.amount), 0);
 
     const totalIncomes = movements
-      .filter(m => m.type === MovementType.INCOME)
-      .reduce((sum, m) => sum + Number(m.amount), 0);
+      .filter((m: MovementWithRelations) => m.type === MovementType.INCOME)
+      .reduce((sum: number, m: MovementWithRelations) => sum + Number(m.amount), 0);
 
     return {
       date,

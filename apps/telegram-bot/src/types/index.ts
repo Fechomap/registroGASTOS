@@ -3,7 +3,7 @@ import { ConversationFlavor } from '@grammyjs/conversations';
 import { HydrateFlavor } from '@grammyjs/hydrate';
 import { User, Company, UserWithCompany } from '@financial-bot/database';
 
-// Datos de sesión 
+// Datos de sesión
 export interface SessionData {
   user?: UserWithCompany;
   conversationData?: {
@@ -22,8 +22,8 @@ export interface CompanyRegistrationData {
 }
 
 // Contexto personalizado del bot
-export type MyContext = Context & 
-  SessionFlavor<SessionData> & 
+export type MyContext = Context &
+  SessionFlavor<SessionData> &
   ConversationFlavor &
   HydrateFlavor<Context>;
 
@@ -94,7 +94,7 @@ export interface ReportFlowData {
 }
 
 // Estado de conversaciones
-export type ConversationState = 
+export type ConversationState =
   | RegisterFlowData
   | EditFlowData
   | UserManagementData

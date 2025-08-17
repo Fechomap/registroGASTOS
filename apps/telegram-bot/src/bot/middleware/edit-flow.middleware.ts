@@ -12,7 +12,7 @@ export async function editFlowMiddleware(ctx: MyContext, next: NextFunction) {
   }
 
   const editFlow = ctx.session.conversationData.editFlow as EditFlowData;
-  
+
   if (editFlow.step !== 'enter_value') {
     return next();
   }
@@ -55,12 +55,14 @@ export async function editFlowMiddleware(ctx: MyContext, next: NextFunction) {
       if (dateMatch) {
         const [, day, month, year] = dateMatch;
         const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-        
+
         // Verificar que la fecha sea válida y no futura
-        if (date.getDate() == parseInt(day) && 
-            date.getMonth() == parseInt(month) - 1 && 
-            date.getFullYear() == parseInt(year) &&
-            date <= new Date()) {
+        if (
+          date.getDate() == parseInt(day) &&
+          date.getMonth() == parseInt(month) - 1 &&
+          date.getFullYear() == parseInt(year) &&
+          date <= new Date()
+        ) {
           parsedValue = date;
           isValid = true;
         } else {
@@ -89,7 +91,7 @@ export async function editFlowMiddleware(ctx: MyContext, next: NextFunction) {
 async function showEditConfirmation(ctx: MyContext, editFlow: EditFlowData) {
   const { movementRepository } = await import('@financial-bot/database');
   const { formatDate } = await import('@financial-bot/shared');
-  
+
   const movement = await movementRepository.findById(editFlow.movementId);
   if (!movement) return;
 
@@ -115,14 +117,13 @@ async function showEditConfirmation(ctx: MyContext, editFlow: EditFlowData) {
       break;
   }
 
-  const confirmMessage = (
+  const confirmMessage =
     `✏️ *Confirmar Edición*\n\n` +
     `🏷️ *Folio:* ${movement.folio}\n` +
     `📝 *Campo a editar:* ${fieldName}\n\n` +
     `📋 *Valor actual:* ${currentValue}\n` +
     `✨ *Nuevo valor:* ${newValue}\n\n` +
-    `¿Confirmas el cambio?`
-  );
+    `¿Confirmas el cambio?`;
 
   await ctx.reply(confirmMessage, {
     parse_mode: 'Markdown',
@@ -130,9 +131,9 @@ async function showEditConfirmation(ctx: MyContext, editFlow: EditFlowData) {
       inline_keyboard: [
         [
           { text: '✅ Confirmar', callback_data: 'edit_confirm_yes' },
-          { text: '❌ Cancelar', callback_data: 'edit_confirm_no' }
-        ]
-      ]
-    }
+          { text: '❌ Cancelar', callback_data: 'edit_confirm_no' },
+        ],
+      ],
+    },
   });
 }

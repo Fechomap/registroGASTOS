@@ -13,7 +13,7 @@ import { formatCurrency, validateData, incomeCommandSchema } from '@financial-bo
  */
 export async function incomeCommand(ctx: CommandContext<MyContext>) {
   const user = ctx.session.user;
-  
+
   if (!user) {
     await ctx.reply('❌ No estás registrado.');
     return;
@@ -27,17 +27,17 @@ export async function incomeCommand(ctx: CommandContext<MyContext>) {
 
   try {
     const args = ctx.match?.toString().trim();
-    
+
     if (!args) {
       await ctx.reply(
         '📝 <b>Uso del comando /ingreso:</b>\n\n' +
-        '<code>/ingreso [monto] [descripción]</code>\n\n' +
-        '<b>Ejemplos:</b>\n' +
-        '• <code>/ingreso 5000 Venta de producto A</code>\n' +
-        '• <code>/ingreso 2500.50 Consultoría mes enero</code>\n' +
-        '• <code>/ingreso 15000 Pago de cliente ABC</code>\n\n' +
-        '💡 El monto debe ser en pesos mexicanos (MXN)',
-        { parse_mode: 'HTML' }
+          '<code>/ingreso [monto] [descripción]</code>\n\n' +
+          '<b>Ejemplos:</b>\n' +
+          '• <code>/ingreso 5000 Venta de producto A</code>\n' +
+          '• <code>/ingreso 2500.50 Consultoría mes enero</code>\n' +
+          '• <code>/ingreso 15000 Pago de cliente ABC</code>\n\n' +
+          '💡 El monto debe ser en pesos mexicanos (MXN)',
+        { parse_mode: 'HTML' },
       );
       return;
     }
@@ -50,15 +50,15 @@ export async function incomeCommand(ctx: CommandContext<MyContext>) {
     if (!description) {
       await ctx.reply(
         '❌ Debes incluir una descripción para el ingreso.\n\n' +
-        'Ejemplo: <code>/ingreso 5000 Venta de producto</code>',
-        { parse_mode: 'HTML' }
+          'Ejemplo: <code>/ingreso 5000 Venta de producto</code>',
+        { parse_mode: 'HTML' },
       );
       return;
     }
 
     // Validar monto
     const amount = parseFloat(amountStr.replace(',', '.'));
-    
+
     if (isNaN(amount) || amount <= 0) {
       await ctx.reply('❌ El monto debe ser un número positivo válido.');
       return;
@@ -86,7 +86,7 @@ export async function incomeCommand(ctx: CommandContext<MyContext>) {
     });
 
     // Mensaje de confirmación
-    const confirmationMessage = 
+    const confirmationMessage =
       '✅ <b>Ingreso registrado exitosamente</b>\n\n' +
       `📌 <b>Folio:</b> <code>${movement.folio}</code>\n` +
       `💰 <b>Monto:</b> ${formatCurrency(Number(movement.amount))} MXN\n` +
@@ -104,10 +104,9 @@ export async function incomeCommand(ctx: CommandContext<MyContext>) {
       amount: Number(movement.amount),
       description: movement.description,
     });
-
   } catch (error) {
     logger.error('Error in income command:', error);
-    
+
     if (error instanceof Error && error.message.includes('Datos inválidos')) {
       await ctx.reply(`❌ ${error.message}`);
     } else {
