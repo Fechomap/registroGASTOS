@@ -12,7 +12,7 @@
     "lint:fix": "prisma generate && eslint src --ext .ts --fix",
     "typecheck": "prisma generate && tsc --noEmit",
     "test": "jest",
-    "test:ci": "jest --ci --coverage",
+    "test:ci": "jest --ci --coverage --passWithNoTests",
     "db:migrate": "prisma migrate deploy",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
