@@ -135,7 +135,7 @@ export function setupCommands(bot: Bot<MyContext>) {
 
   // Callbacks para menús principales
   bot.callbackQuery(
-    /^main_|^admin_|^users_|^reports_|^profile_|^expense_|^category_select_/,
+    /^main_|^admin_|^users_|^reports_|^profile_|^expense_|^category_select_|^date_select_|^photo_skip$|^date_back_to_options$/,
     async ctx => {
       await handleMenuCallback(ctx);
     },
@@ -200,12 +200,24 @@ export function setupCommands(bot: Bot<MyContext>) {
     }
   });
 
-  // Manejar fotos (para procesamiento con IA)
+  // Manejar fotos (para el flujo de gastos o información general)
   bot.on('message:photo', async ctx => {
-    await ctx.reply(
-      '📷 Imagen recibida. En la próxima versión podrás procesar tickets automáticamente con IA.\n\n' +
-        'Por ahora, usa /gasto [monto] [descripción] para registrar gastos manualmente.',
-    );
+    // Verificar si el usuario está en el flujo de registro de gastos (paso de foto)
+    const conversationData = ctx.session?.conversationData;
+    if (conversationData?.registerFlow?.step === 'photo') {
+      // El usuario está en el flujo de gastos, procesarlo con el handler de conversación
+      await handleConversationMessage(ctx);
+    } else {
+      // No está en ningún flujo específico, mostrar mensaje informativo
+      await ctx.reply(
+        '📷 **Foto recibida**\n\n' +
+          '💡 Para incluir fotos en tus gastos:\n' +
+          '1. Usa el menú para registrar un gasto\n' +
+          '2. En el paso de fotografía, envía tu ticket o recibo\n\n' +
+          '🚀 También puedes usar: `/gasto [monto] [descripción]`',
+        { parse_mode: 'Markdown' },
+      );
+    }
   });
 
   // Manejar documentos

@@ -14,8 +14,12 @@ import {
   handleExpenseCompanyCallback,
   handleCategorySelectCallback,
   handleExpenseConfirmSaveCallback,
+  handleExpenseFinalSaveCallback,
   handleExpenseCancelCallback,
   handleMainMenuCallback,
+  handlePhotoSkipCallback,
+  handleDateSelectCallback,
+  handleDateBackToOptionsCallback,
 } from './expense.callbacks';
 import {
   handleCompanyHelp,
@@ -78,6 +82,15 @@ export async function handleMenuCallback(ctx: CallbackQueryContext<MyContext>) {
       case 'expense_confirm_save':
         await handleExpenseConfirmSaveCallback(ctx);
         break;
+      case 'expense_final_save':
+        await handleExpenseFinalSaveCallback(ctx);
+        break;
+      case 'photo_skip':
+        await handlePhotoSkipCallback(ctx);
+        break;
+      case 'date_back_to_options':
+        await handleDateBackToOptionsCallback(ctx);
+        break;
 
       // Callbacks de empresa
       case 'company_help':
@@ -107,6 +120,12 @@ export async function handleMenuCallback(ctx: CallbackQueryContext<MyContext>) {
         // Manejar selección de empresa
         if (data?.startsWith('expense_company_')) {
           await handleExpenseCompanyCallback(ctx);
+          return;
+        }
+
+        // Manejar selección de fecha
+        if (data?.startsWith('date_select_')) {
+          await handleDateSelectCallback(ctx);
           return;
         }
 

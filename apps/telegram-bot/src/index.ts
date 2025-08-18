@@ -9,7 +9,11 @@ import * as path from 'path';
 // Solo cargar dotenv en desarrollo - Railway inyecta variables automáticamente
 if (process.env.NODE_ENV !== 'production') {
   try {
-    dotenv.config({ path: path.resolve(process.cwd(), '../../', '.env') });
+    const envPath = path.resolve(__dirname, '../../../', '.env');
+    const result = dotenv.config({ path: envPath });
+    if (result.error) {
+      logger.warn('Error loading .env file:', result.error);
+    }
   } catch (error) {
     logger.info('dotenv not available - using environment variables');
   }

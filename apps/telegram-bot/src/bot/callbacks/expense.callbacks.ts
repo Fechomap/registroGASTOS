@@ -6,6 +6,8 @@ import {
   processCompanySelection,
   confirmExpense,
   saveExpense,
+  processDateSelection,
+  showDateSelectionStep,
 } from '../handlers/conversation.handler';
 import { createMainMenu, getMainMenuMessage } from '../menus/main.menu';
 
@@ -74,9 +76,37 @@ export async function handleCategorySelectCallback(ctx: CallbackQueryContext<MyC
 }
 
 /**
+ * Callback para omitir fotografía
+ */
+export async function handlePhotoSkipCallback(ctx: CallbackQueryContext<MyContext>) {
+  const registerFlow = ctx.session.conversationData?.registerFlow;
+
+  if (!registerFlow) {
+    await ctx.answerCallbackQuery('❌ Error en el flujo');
+    return;
+  }
+
+  // Continuar sin foto
+  registerFlow.step = 'date';
+  ctx.session.conversationData = { registerFlow };
+
+  const { showDateSelectionStep } = await import('../handlers/conversation.handler');
+  await showDateSelectionStep(ctx, registerFlow);
+  await ctx.answerCallbackQuery('📸 Continuando sin fotografía');
+}
+
+/**
  * Callback para confirmar y guardar el gasto
  */
 export async function handleExpenseConfirmSaveCallback(ctx: CallbackQueryContext<MyContext>) {
+  await saveExpense(ctx);
+  await ctx.answerCallbackQuery();
+}
+
+/**
+ * Callback para guardar el gasto final (nuevo paso 6)
+ */
+export async function handleExpenseFinalSaveCallback(ctx: CallbackQueryContext<MyContext>) {
   await saveExpense(ctx);
   await ctx.answerCallbackQuery();
 }
@@ -128,4 +158,35 @@ export async function handleMainMenuCallback(ctx: CallbackQueryContext<MyContext
   });
 
   await ctx.answerCallbackQuery();
+}
+
+/**
+ * Callback para selección de fecha
+ */
+export async function handleDateSelectCallback(ctx: CallbackQueryContext<MyContext>) {
+  const callbackData = ctx.callbackQuery.data;
+
+  if (!callbackData?.startsWith('date_select_')) {
+    await ctx.answerCallbackQuery('❌ Error en la selección de fecha');
+    return;
+  }
+
+  const dateString = callbackData.replace('date_select_', '');
+  await processDateSelection(ctx, dateString);
+  await ctx.answerCallbackQuery();
+}
+
+/**
+ * Callback para volver a opciones de fecha
+ */
+export async function handleDateBackToOptionsCallback(ctx: CallbackQueryContext<MyContext>) {
+  const registerFlow = ctx.session.conversationData?.registerFlow;
+
+  if (!registerFlow) {
+    await ctx.answerCallbackQuery('❌ Error en el flujo');
+    return;
+  }
+
+  await showDateSelectionStep(ctx, registerFlow);
+  await ctx.answerCallbackQuery('⬅️ Volviendo a opciones de fecha');
 }

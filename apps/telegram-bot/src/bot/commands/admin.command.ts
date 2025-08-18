@@ -5,7 +5,9 @@ import {
   companyRepository,
   userRepository,
   categoryRepository,
+  personalCategoryRepository,
   Company,
+  UserRole,
 } from '@financial-bot/database';
 import { CompanyStatus } from '@financial-bot/database';
 
@@ -104,17 +106,38 @@ export async function approveCompanyCommand(ctx: CommandContext<MyContext>) {
 
     // Crear usuario admin para la empresa
     if (approvedCompany.requestedBy) {
-      // Buscar datos del solicitante en el contexto del bot
-      // Por ahora, crear usuario básico que se completará cuando se conecte
-      await userRepository.create({
-        telegramId: approvedCompany.requestedBy,
-        chatId: approvedCompany.requestedBy, // Se actualizará cuando se conecte
-        company: { connect: { id: approvedCompany.id } },
-        firstName: 'Admin',
-        role: 'ADMIN',
-      });
+      // Buscar si ya existe un usuario con este telegramId
+      let user = await userRepository.findByTelegramId(approvedCompany.requestedBy);
 
-      // Crear categorías por defecto
+      if (!user) {
+        // Crear usuario básico que se completará cuando se conecte
+        await userRepository.create({
+          telegramId: approvedCompany.requestedBy,
+          chatId: approvedCompany.requestedBy, // Se actualizará cuando se conecte
+          company: { connect: { id: approvedCompany.id } }, // Relación directa principal
+          firstName: 'Admin',
+          role: UserRole.ADMIN,
+        });
+
+        // Obtener el usuario con la empresa incluida
+        user = await userRepository.findByTelegramId(approvedCompany.requestedBy);
+      }
+
+      // Crear relación UserCompany con rol ADMIN
+      if (user) {
+        await userRepository.addUserToCompany(user.id, approvedCompany.id, UserRole.ADMIN);
+
+        // Crear categorías personales predefinidas para el usuario admin
+        // Solo crear si es un usuario nuevo (no tiene companyId establecido)
+        try {
+          await personalCategoryRepository.createDefaultCategories(user.id);
+        } catch (error) {
+          console.error('Error creating personal categories:', error);
+          // Continuar aunque falle la creación de categorías
+        }
+      }
+
+      // Crear categorías por defecto para la empresa
       await createDefaultCategories(approvedCompany.id);
     }
 
@@ -208,13 +231,16 @@ export async function rejectCompanyCommand(ctx: CommandContext<MyContext>) {
  */
 async function createDefaultCategories(companyId: string) {
   const defaultCategories = [
-    { name: 'Alimentación', icon: '🍽️', color: '#FF6B6B' },
-    { name: 'Transporte', icon: '🚗', color: '#4ECDC4' },
-    { name: 'Oficina', icon: '🏢', color: '#45B7D1' },
-    { name: 'Marketing', icon: '📢', color: '#96CEB4' },
-    { name: 'Tecnología', icon: '💻', color: '#FFEAA7' },
-    { name: 'Servicios', icon: '🔧', color: '#DDA0DD' },
-    { name: 'Otros', icon: '📦', color: '#A8A8A8' },
+    { name: 'Alimentación', icon: '🍽️', color: '#FF6B6B', order: 1 },
+    { name: 'Transporte', icon: '🚗', color: '#4ECDC4', order: 2 },
+    { name: 'Oficina', icon: '🏢', color: '#45B7D1', order: 3 },
+    { name: 'Marketing', icon: '📢', color: '#96CEB4', order: 4 },
+    { name: 'Tecnología', icon: '💻', color: '#FFEAA7', order: 5 },
+    { name: 'Servicios', icon: '🔧', color: '#DDA0DD', order: 6 },
+    { name: 'Suministros', icon: '📋', color: '#74B9FF', order: 7 },
+    { name: 'Capacitación', icon: '🎓', color: '#00B894', order: 8 },
+    { name: 'Mantenimiento', icon: '🔧', color: '#FDCB6E', order: 9 },
+    { name: 'Otros', icon: '📦', color: '#A8A8A8', order: 10 },
   ];
 
   for (const category of defaultCategories) {
@@ -223,6 +249,7 @@ async function createDefaultCategories(companyId: string) {
       name: category.name,
       icon: category.icon,
       color: category.color,
+      order: category.order,
     });
   }
 }

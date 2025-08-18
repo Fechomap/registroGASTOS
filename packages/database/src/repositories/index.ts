@@ -5,6 +5,7 @@ export * from './movement.repository';
 export * from './category.repository';
 export * from './audit.repository';
 export * from './system-admin.repository';
+export * from './attachment.repository';
 
 // Repositorios para gastos personales
 export * from './personal-category.repository';

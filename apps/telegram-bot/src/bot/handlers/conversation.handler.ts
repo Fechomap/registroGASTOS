@@ -7,7 +7,21 @@ import {
   personalMovementRepository,
   personalCategoryRepository,
   userRepository,
+  attachmentRepository,
+  Category,
+  PersonalCategory,
 } from '@financial-bot/database';
+import { TelegramPhotoService } from '../../services/telegram-photo.service';
+
+// Lazy loading del servicio de fotos para asegurar que las env vars estén cargadas
+let photoService: TelegramPhotoService | null = null;
+
+function getPhotoService(): TelegramPhotoService {
+  if (!photoService) {
+    photoService = new TelegramPhotoService(); // Nuevas credenciales R2
+  }
+  return photoService;
+}
 import {
   createExpenseTypeMenu,
   getExpenseTypeMessage,
@@ -54,6 +68,12 @@ export async function handleConversationMessage(ctx: Context & MyContext) {
       break;
     case 'category':
       await handleCategoryStep(ctx, registerFlow);
+      break;
+    case 'photo':
+      await handlePhotoStep(ctx, registerFlow);
+      break;
+    case 'date':
+      await handleDateStep(ctx, registerFlow);
       break;
     default:
       await ctx.reply('❌ Error en el flujo de conversación. Usa /menu para reiniciar.');
@@ -198,8 +218,41 @@ export async function processExpenseTypeSelection(
     try {
       const userCompanies = await userRepository.getUserCompanies(user.id);
 
+      // Si no hay relaciones UserCompany pero el usuario tiene companyId, usar esa empresa
+      if (userCompanies.length === 0 && user.companyId) {
+        // Crear la relación UserCompany que falta
+        try {
+          await userRepository.addUserToCompany(user.id, user.companyId, user.role);
+
+          // Recargar empresas después de crear la relación
+          const updatedUserCompanies = await userRepository.getUserCompanies(user.id);
+
+          if (updatedUserCompanies.length > 0) {
+            // Usar la empresa recién vinculada
+            registerFlow.companyId = updatedUserCompanies[0].companyId;
+            registerFlow.step = 'amount';
+            ctx.session.conversationData = { registerFlow };
+
+            await ctx.editMessageText(
+              `🏢 **Registro de Gasto Empresarial**\n` +
+                `**Empresa:** ${updatedUserCompanies[0].company.name}\n\n` +
+                `💰 **Paso 1 de 5 - Monto**\n\n` +
+                `¿Cuánto gastaste?\n\n` +
+                `💡 Escribe solo el número (ejemplo: 150.50)`,
+              {
+                parse_mode: 'Markdown',
+                reply_markup: new InlineKeyboard().text('❌ Cancelar', 'expense_cancel'),
+              },
+            );
+            return;
+          }
+        } catch (error) {
+          console.error('Error creating UserCompany relation:', error);
+        }
+      }
+
       if (userCompanies.length === 0) {
-        // Mostrar menú para registrar empresa
+        // Solo si realmente no hay empresas, mostrar el menú de registro
         const { createNoCompaniesMenu, getNoCompaniesMessage } = await import(
           '../menus/company-setup.menu'
         );
@@ -334,7 +387,7 @@ async function handleAmountStep(ctx: Context & MyContext, registerFlow: Register
   ctx.session.conversationData = { registerFlow };
 
   const message =
-    `📝 **Registro de Gasto - Paso 2 de 4**\n\n` +
+    `📝 **Registro de Gasto - Paso 2 de 5**\n\n` +
     `💰 Monto: $${amount} MXN\n\n` +
     `¿En qué lo gastaste?\n\n` +
     `💡 Describe brevemente el gasto (ejemplo: "Comida en restaurante")`;
@@ -389,10 +442,34 @@ async function showCategorySelection(ctx: Context & MyContext, registerFlow: Reg
     }
 
     // Obtener categorías según el tipo de gasto
-    const categories =
-      registerFlow.expenseType === 'PERSONAL'
-        ? await personalCategoryRepository.findByUser(user.id)
-        : await categoryRepository.findByCompany(registerFlow.companyId || user.companyId);
+    let categories: (Category | PersonalCategory)[] = [];
+    if (registerFlow.expenseType === 'PERSONAL') {
+      categories = await personalCategoryRepository.findByUser(user.id);
+
+      // Si no hay categorías personales, crearlas automáticamente
+      if (categories.length === 0) {
+        try {
+          await personalCategoryRepository.createDefaultCategories(user.id);
+          categories = await personalCategoryRepository.findByUser(user.id);
+        } catch (error) {
+          console.error('Error creating default personal categories:', error);
+          categories = [];
+        }
+      }
+    } else {
+      categories = await categoryRepository.findByCompany(registerFlow.companyId || user.companyId);
+
+      // Si no hay categorías empresariales, puede ser que la empresa sea nueva
+      if (categories.length === 0 && user.companyId) {
+        try {
+          await createDefaultCategoriesForCompany(user.companyId);
+          categories = await categoryRepository.findByCompany(user.companyId);
+        } catch (error) {
+          console.error('Error creating default company categories:', error);
+          categories = [];
+        }
+      }
+    }
 
     const keyboard = new InlineKeyboard();
 
@@ -417,7 +494,7 @@ async function showCategorySelection(ctx: Context & MyContext, registerFlow: Reg
       .text('❌ Cancelar', 'expense_cancel');
 
     const message =
-      `📂 **Registro de Gasto - Paso 3 de 4**\n\n` +
+      `📂 **Registro de Gasto - Paso 3 de 5**\n\n` +
       `💰 Monto: $${registerFlow.amount} MXN\n` +
       `📝 Descripción: ${registerFlow.description}\n\n` +
       `Selecciona una categoría:`;
@@ -445,6 +522,157 @@ async function handleCategoryStep(ctx: Context & MyContext, _registerFlow: Regis
 }
 
 /**
+ * Paso 5: Mostrar solicitud de fotografía
+ */
+async function showPhotoStep(ctx: Context & MyContext, registerFlow: RegisterFlowData) {
+  const message =
+    `📸 **Registro de Gasto - Paso 4 de 5**\n\n` +
+    `💰 Monto: $${registerFlow.amount} MXN\n` +
+    `📝 Descripción: ${registerFlow.description}\n\n` +
+    `📷 **Adjuntar fotografía del recibo (opcional)**\n\n` +
+    `Puedes enviar una foto de tu ticket o factura para respaldar este gasto, o continuar sin foto.`;
+
+  await ctx.reply(message, {
+    reply_markup: new InlineKeyboard()
+      .text('⏭️ Continuar sin foto', 'photo_skip')
+      .row()
+      .text('❌ Cancelar', 'expense_cancel'),
+    parse_mode: 'Markdown',
+  });
+}
+
+/**
+ * Paso 5: Manejar entrada de fotografía
+ */
+async function handlePhotoStep(ctx: Context & MyContext, registerFlow: RegisterFlowData) {
+  // Verificar si es una foto
+  if (ctx.message?.photo) {
+    const user = ctx.session.user;
+    if (!user) {
+      await ctx.reply('❌ Error de autenticación.');
+      return;
+    }
+
+    // Mostrar mensaje de procesamiento
+    await ctx.reply('📸 **Procesando fotografía...**', { parse_mode: 'Markdown' });
+
+    // Verificar si el servicio de storage está configurado
+    if (!getPhotoService().isConfigured()) {
+      // Si no está configurado, usar el método anterior (solo file_id)
+      const photo = ctx.message.photo[ctx.message.photo.length - 1];
+      registerFlow.photoFileId = photo.file_id;
+      registerFlow.step = 'date';
+      ctx.session.conversationData = { registerFlow };
+
+      await ctx.reply(
+        '✅ **Foto recibida correctamente**\n\n' +
+          'La fotografía ha sido adjuntada temporalmente a tu gasto.\n' +
+          '💡 *Configura Cloudflare R2 para almacenamiento permanente.*',
+        { parse_mode: 'Markdown' },
+      );
+
+      await showDateSelectionStep(ctx, registerFlow);
+      return;
+    }
+
+    // Intentar subir la foto a Cloudflare R2
+    try {
+      const companyId =
+        registerFlow.expenseType === 'COMPANY'
+          ? registerFlow.companyId || user.companyId
+          : undefined;
+
+      const uploadResult = await getPhotoService().downloadAndStorePhoto(
+        ctx,
+        user.id,
+        undefined, // movementId se asignará después
+        companyId,
+      );
+
+      if (uploadResult) {
+        // Guardar la información de la foto subida
+        registerFlow.photoFileId = uploadResult.key; // Usar la key de R2 en lugar del file_id
+        registerFlow.step = 'date';
+        ctx.session.conversationData = { registerFlow };
+
+        await ctx.reply(
+          '✅ **Fotografía almacenada correctamente**\n\n' +
+            'Tu recibo ha sido guardado de forma segura y estará disponible en tus reportes.',
+          { parse_mode: 'Markdown' },
+        );
+
+        await showDateSelectionStep(ctx, registerFlow);
+      } else {
+        throw new Error('Error al procesar la fotografía');
+      }
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+
+      // Fallback: usar file_id de Telegram
+      const photo = ctx.message.photo[ctx.message.photo.length - 1];
+      registerFlow.photoFileId = photo.file_id;
+      registerFlow.step = 'date';
+      ctx.session.conversationData = { registerFlow };
+
+      await ctx.reply(
+        '⚠️ **Foto recibida con limitaciones**\n\n' +
+          'La fotografía se guardó temporalmente. Para almacenamiento permanente, configura el servicio de storage.',
+        { parse_mode: 'Markdown' },
+      );
+
+      await showDateSelectionStep(ctx, registerFlow);
+    }
+  } else {
+    // No es una foto, pedir que envíe una foto o omita
+    await ctx.reply(
+      '📸 **Esperando fotografía**\n\n' +
+        'Por favor envía una fotografía del recibo o usa el botón "Continuar sin foto".',
+      { parse_mode: 'Markdown' },
+    );
+  }
+}
+
+/**
+ * Mostrar paso de confirmación final
+ */
+export async function showConfirmationStep(
+  ctx: Context & MyContext,
+  registerFlow: RegisterFlowData,
+) {
+  try {
+    // Obtener nombre de categoría si se seleccionó
+    let categoryName = 'Sin categoría';
+    if (registerFlow.categoryId) {
+      const category = await categoryRepository.findById(registerFlow.categoryId);
+      categoryName = category ? `${category.icon || '📂'} ${category.name}` : 'Sin categoría';
+    }
+
+    const photoStatus = registerFlow.photoFileId ? '✅ Adjunta' : '❌ Sin fotografía';
+
+    const message =
+      `✅ **Confirmación de Gasto - Paso 5 de 5**\n\n` +
+      `💰 **Monto:** $${registerFlow.amount} MXN\n` +
+      `📝 **Descripción:** ${registerFlow.description}\n` +
+      `📂 **Categoría:** ${categoryName}\n` +
+      `📸 **Fotografía:** ${photoStatus}\n` +
+      `📅 **Fecha:** Hoy\n\n` +
+      `¿Todo está correcto?`;
+
+    await ctx.reply(message, {
+      reply_markup: new InlineKeyboard()
+        .text('✅ Sí, Guardar', 'expense_confirm_save')
+        .text('✏️ Editar', 'expense_edit_flow')
+        .row()
+        .text('❌ Cancelar', 'expense_cancel'),
+      parse_mode: 'Markdown',
+    });
+  } catch (error) {
+    console.error('Error showing confirmation:', error);
+    await ctx.reply('❌ Error al procesar el gasto. Intenta nuevamente.');
+  }
+}
+
+/**
  * Confirmar y guardar el gasto
  */
 export async function confirmExpense(ctx: Context & MyContext, categoryId?: string) {
@@ -462,34 +690,12 @@ export async function confirmExpense(ctx: Context & MyContext, categoryId?: stri
   }
 
   try {
-    // Obtener nombre de categoría si se seleccionó
-    let categoryName = 'Sin categoría';
-    if (categoryId && categoryId !== 'none') {
-      const category = await categoryRepository.findById(categoryId);
-      categoryName = category ? `${category.icon || '📂'} ${category.name}` : 'Sin categoría';
-    }
-
-    const message =
-      `✅ **Confirmación de Gasto - Paso 4 de 4**\n\n` +
-      `💰 **Monto:** $${registerFlow.amount} MXN\n` +
-      `📝 **Descripción:** ${registerFlow.description}\n` +
-      `📂 **Categoría:** ${categoryName}\n` +
-      `📅 **Fecha:** Hoy\n\n` +
-      `¿Todo está correcto?`;
-
-    // Actualizar el flujo con la categoría
+    // Actualizar el flujo con la categoría y pasar al paso de foto
     registerFlow.categoryId = categoryId === 'none' ? undefined : categoryId;
-    registerFlow.step = 'confirm';
+    registerFlow.step = 'photo';
     ctx.session.conversationData = { registerFlow };
 
-    await ctx.reply(message, {
-      reply_markup: new InlineKeyboard()
-        .text('✅ Sí, Guardar', 'expense_confirm_save')
-        .text('✏️ Editar', 'expense_edit_flow')
-        .row()
-        .text('❌ Cancelar', 'expense_cancel'),
-      parse_mode: 'Markdown',
-    });
+    await showPhotoStep(ctx, registerFlow);
   } catch (error) {
     console.error('Error confirming expense:', error);
     await ctx.reply('❌ Error al procesar el gasto. Intenta nuevamente.');
@@ -531,7 +737,7 @@ export async function saveExpense(ctx: Context & MyContext) {
         category: registerFlow.categoryId
           ? { connect: { id: registerFlow.categoryId } }
           : undefined,
-        date: new Date(),
+        date: registerFlow.date || new Date(),
         currency: 'MXN',
       });
     } else {
@@ -549,9 +755,30 @@ export async function saveExpense(ctx: Context & MyContext) {
         category: registerFlow.categoryId
           ? { connect: { id: registerFlow.categoryId } }
           : undefined,
-        date: new Date(),
+        date: registerFlow.date || new Date(),
         currency: 'MXN',
       });
+    }
+
+    // Crear attachment si hay foto
+    if (registerFlow.photoFileId) {
+      try {
+        // Determinar si es una key de R2 o un file_id de Telegram
+        const isR2Key = !registerFlow.photoFileId.includes(':');
+        const status = isR2Key ? 'COMPLETED' : 'PENDING';
+
+        await attachmentRepository.create({
+          movement: { connect: { id: movement.id } },
+          fileUrl: registerFlow.photoFileId,
+          fileName: `receipt_${movement.folio}${isR2Key ? '' : '_telegram'}.jpg`,
+          fileSize: 0, // Se actualizará si tenemos la información
+          mimeType: 'image/jpeg',
+          status,
+        });
+      } catch (photoError) {
+        console.error('Error saving photo attachment:', photoError);
+        // Continuar aunque falle la foto
+      }
     }
 
     // Limpiar la conversación
@@ -559,13 +786,14 @@ export async function saveExpense(ctx: Context & MyContext) {
 
     const typeIcon = isPersonal ? '👤' : '🏢';
     const typeText = isPersonal ? 'Personal' : 'Empresarial';
+    const photoStatus = registerFlow.photoFileId ? '\n📸 **Fotografía:** Adjunta' : '';
 
     const message =
       `🎉 **¡Gasto ${typeText} Registrado!**\n\n` +
       `${typeIcon} **Tipo:** ${typeText}\n` +
       `📌 **Folio:** ${movement.folio}\n` +
       `💰 **Monto:** $${registerFlow.amount} MXN\n` +
-      `📝 **Descripción:** ${registerFlow.description}\n\n` +
+      `📝 **Descripción:** ${registerFlow.description}${photoStatus}\n\n` +
       `${isPersonal ? 'Gasto registrado en tu cuenta personal.' : 'El administrador ha sido notificado.'}`;
 
     await ctx.reply(message, {
@@ -579,5 +807,195 @@ export async function saveExpense(ctx: Context & MyContext) {
   } catch (error) {
     console.error('Error saving expense:', error);
     await ctx.reply('❌ Error al guardar el gasto. Intenta nuevamente.');
+  }
+}
+
+/**
+ * Crear categorías por defecto para una empresa
+ */
+async function createDefaultCategoriesForCompany(companyId: string) {
+  const defaultCategories = [
+    { name: 'Alimentación', icon: '🍽️', color: '#FF6B6B', order: 1 },
+    { name: 'Transporte', icon: '🚗', color: '#4ECDC4', order: 2 },
+    { name: 'Oficina', icon: '🏢', color: '#45B7D1', order: 3 },
+    { name: 'Marketing', icon: '📢', color: '#96CEB4', order: 4 },
+    { name: 'Tecnología', icon: '💻', color: '#FFEAA7', order: 5 },
+    { name: 'Servicios', icon: '🔧', color: '#DDA0DD', order: 6 },
+    { name: 'Suministros', icon: '📋', color: '#74B9FF', order: 7 },
+    { name: 'Capacitación', icon: '🎓', color: '#00B894', order: 8 },
+    { name: 'Mantenimiento', icon: '🔧', color: '#FDCB6E', order: 9 },
+    { name: 'Otros', icon: '📦', color: '#A8A8A8', order: 10 },
+  ];
+
+  for (const category of defaultCategories) {
+    await categoryRepository.create({
+      company: { connect: { id: companyId } },
+      name: category.name,
+      icon: category.icon,
+      color: category.color,
+      order: category.order,
+    });
+  }
+}
+
+/**
+ * Paso 5: Manejar selección de fecha (solo texto)
+ */
+async function handleDateStep(ctx: Context & MyContext, _registerFlow: RegisterFlowData) {
+  // Este paso se maneja por callbacks, no por texto
+  await ctx.reply(
+    '📅 **Esperando selección de fecha**\n\n' +
+      'Por favor selecciona una fecha usando los botones de arriba o envía una fecha en formato DD/MM.',
+    { parse_mode: 'Markdown' },
+  );
+}
+
+/**
+ * Mostrar paso de selección de fecha
+ */
+export async function showDateSelectionStep(
+  ctx: Context & MyContext,
+  registerFlow: RegisterFlowData,
+) {
+  const today = new Date();
+  const dates = [];
+
+  // Generar fechas para los últimos 5 días
+  for (let i = 0; i < 5; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - i);
+    dates.push({
+      date,
+      label:
+        i === 0 ? 'Hoy' : i === 1 ? 'Ayer' : i === 2 ? 'Antier' : `${date.getDate()} de agosto`,
+    });
+  }
+
+  const keyboard = new InlineKeyboard();
+
+  // Añadir botones de fechas en filas de 2
+  for (let i = 0; i < dates.length; i += 2) {
+    const date1 = dates[i];
+    const date2 = dates[i + 1];
+
+    const dateStr1 = date1.date.toISOString().split('T')[0];
+    const dateStr2 = date2?.date.toISOString().split('T')[0];
+
+    if (date2) {
+      keyboard
+        .text(date1.label, `date_select_${dateStr1}`)
+        .text(date2.label, `date_select_${dateStr2}`)
+        .row();
+    } else {
+      keyboard.text(date1.label, `date_select_${dateStr1}`).row();
+    }
+  }
+
+  keyboard.text('📅 Otra fecha', 'date_select_custom').row().text('❌ Cancelar', 'expense_cancel');
+
+  const message =
+    `📅 **Registro de Gasto - Paso 5 de 6**\n\n` +
+    `💰 Monto: $${registerFlow.amount} MXN\n` +
+    `📝 Descripción: ${registerFlow.description}\n` +
+    `📸 Fotografía: ${registerFlow.photoFileId ? '✅ Adjunta' : '❌ Sin foto'}\n\n` +
+    `¿En qué fecha fue este gasto?`;
+
+  await ctx.reply(message, {
+    reply_markup: keyboard,
+    parse_mode: 'Markdown',
+  });
+}
+
+/**
+ * Procesar selección de fecha
+ */
+export async function processDateSelection(ctx: Context & MyContext, dateString: string) {
+  const registerFlow = ctx.session.conversationData?.registerFlow as RegisterFlowData;
+
+  if (!registerFlow) {
+    await ctx.reply('❌ Error en el flujo. Intenta nuevamente.');
+    return;
+  }
+
+  try {
+    if (dateString === 'custom') {
+      // Solicitar entrada manual de fecha
+      registerFlow.step = 'date';
+      ctx.session.conversationData = { registerFlow };
+
+      await ctx.editMessageText(
+        '📅 **Fecha personalizada**\n\n' +
+          'Escribe la fecha en formato DD/MM\n\n' +
+          '**Ejemplos:** 17/08, 15/08, 01/08',
+        {
+          reply_markup: new InlineKeyboard()
+            .text('⬅️ Volver a opciones', 'date_back_to_options')
+            .row()
+            .text('❌ Cancelar', 'expense_cancel'),
+          parse_mode: 'Markdown',
+        },
+      );
+      return;
+    }
+
+    // Parsear fecha seleccionada
+    const selectedDate = new Date(dateString);
+    registerFlow.date = selectedDate;
+    registerFlow.step = 'final_confirm';
+    ctx.session.conversationData = { registerFlow };
+
+    await showFinalConfirmationStep(ctx, registerFlow);
+  } catch (error) {
+    console.error('Error processing date selection:', error);
+    await ctx.reply('❌ Error al procesar la fecha. Intenta nuevamente.');
+  }
+}
+
+/**
+ * Mostrar confirmación final (Paso 6)
+ */
+export async function showFinalConfirmationStep(
+  ctx: Context & MyContext,
+  registerFlow: RegisterFlowData,
+) {
+  try {
+    // Obtener nombre de categoría si se seleccionó
+    let categoryName = 'Sin categoría';
+    if (registerFlow.categoryId) {
+      const category = await categoryRepository.findById(registerFlow.categoryId);
+      categoryName = category ? `${category.icon || '📂'} ${category.name}` : 'Sin categoría';
+    }
+
+    const photoStatus = registerFlow.photoFileId ? '✅ Adjunta' : '❌ Sin fotografía';
+
+    // Formatear fecha
+    const dateStr = registerFlow.date
+      ? registerFlow.date.toLocaleDateString('es-MX', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        })
+      : 'Hoy';
+
+    const message =
+      `✅ **Confirmación Final - Paso 6 de 6**\n\n` +
+      `💰 **Monto:** $${registerFlow.amount} MXN\n` +
+      `📝 **Descripción:** ${registerFlow.description}\n` +
+      `📂 **Categoría:** ${categoryName}\n` +
+      `📸 **Fotografía:** ${photoStatus}\n` +
+      `📅 **Fecha:** ${dateStr}\n\n` +
+      `¿Todo está correcto?`;
+
+    await ctx.reply(message, {
+      reply_markup: new InlineKeyboard()
+        .text('✅ Sí, Guardar Gasto', 'expense_final_save')
+        .text('✏️ Editar', 'expense_edit_flow')
+        .row()
+        .text('❌ Cancelar', 'expense_cancel'),
+      parse_mode: 'Markdown',
+    });
+  } catch (error) {
+    console.error('Error showing final confirmation:', error);
+    await ctx.reply('❌ Error al procesar el gasto. Intenta nuevamente.');
   }
 }

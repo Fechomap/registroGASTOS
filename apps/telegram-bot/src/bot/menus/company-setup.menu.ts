@@ -8,9 +8,7 @@ export function createNoCompaniesMenu() {
     .text('🏢 Registrar Empresa', 'company_register_start')
     .row()
     .text('❓ ¿Cómo funciona?', 'company_help')
-    .text('👤 Mi Perfil', 'main_profile')
-    .row()
-    .text('🔄 Verificar Empresas', 'company_check');
+    .text('🏠 Menú Principal', 'main_menu');
 }
 
 /**

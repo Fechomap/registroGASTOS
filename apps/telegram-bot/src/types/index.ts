@@ -40,13 +40,22 @@ export interface QuickIncomeData {
 
 // Datos para el flujo de registro paso a paso
 export interface RegisterFlowData {
-  step: 'expense_type' | 'company_select' | 'amount' | 'description' | 'category' | 'confirm';
+  step:
+    | 'expense_type'
+    | 'company_select'
+    | 'amount'
+    | 'description'
+    | 'category'
+    | 'photo'
+    | 'date'
+    | 'final_confirm';
   expenseType?: 'COMPANY' | 'PERSONAL'; // Nuevo campo para tipo de gasto
   companyId?: string; // Empresa seleccionada (solo para gastos de empresa)
   amount?: number;
   description?: string;
   categoryId?: string;
   date?: Date;
+  photoFileId?: string; // File ID de la foto en Telegram
   attachments?: string[];
 }
 

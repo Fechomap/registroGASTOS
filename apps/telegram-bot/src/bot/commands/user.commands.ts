@@ -1,6 +1,6 @@
 import { CommandContext } from 'grammy';
 import { MyContext } from '../../types';
-import { userRepository, UserRole } from '@financial-bot/database';
+import { userRepository, UserRole, personalCategoryRepository } from '@financial-bot/database';
 import { isAdmin } from '../../middleware/auth';
 import { formatDate } from '@financial-bot/shared';
 
@@ -73,6 +73,9 @@ export const userCommands = {
           connect: { id: ctx.session.user.companyId },
         },
       });
+
+      // Crear categorías personales predefinidas para el nuevo usuario
+      await personalCategoryRepository.createDefaultCategories(newUser.id);
 
       await ctx.reply(
         `✅ *Usuario Agregado Exitosamente*\n\n` +

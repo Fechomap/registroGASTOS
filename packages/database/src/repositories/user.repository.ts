@@ -92,6 +92,23 @@ export class UserRepository {
       },
     });
   }
+
+  /**
+   * Agregar usuario a una empresa (crear relación UserCompany)
+   */
+  async addUserToCompany(userId: string, companyId: string, role: UserRole = UserRole.OPERATOR) {
+    return prisma.userCompany.create({
+      data: {
+        userId,
+        companyId,
+        role,
+      },
+      include: {
+        company: true,
+        user: true,
+      },
+    });
+  }
 }
 
 export const userRepository = new UserRepository();
