@@ -68,6 +68,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
         
+      - name: Generate Prisma client before build
+        run: pnpm run --filter=@financial-bot/database db:generate
+        
       - name: Build packages
         run: pnpm run build
 
