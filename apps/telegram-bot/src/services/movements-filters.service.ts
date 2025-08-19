@@ -25,15 +25,10 @@ export class MovementsFiltersService {
    */
   createInitialFilterState(): MovementFilterState {
     return {
-      isActive: true,
+      isActive: false,
       type: 'all',
       scope: 'all',
-      // Inicializar con período por defecto (mes actual)
-      period: {
-        type: 'month',
-        label: 'Este Mes',
-        ...this.getMonthDateRange(),
-      },
+      // Sin período específico = sin restricción temporal
     };
   }
 
@@ -387,10 +382,14 @@ export class MovementsFiltersService {
    * Obtener rango de fechas para "hoy"
    */
   private getTodayDateRange(): { dateFrom: Date; dateTo: Date } {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Obtener fecha actual en UTC para evitar problemas de zona horaria
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    today.setUTCHours(0, 0, 0, 0);
+
     const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+
     return { dateFrom: today, dateTo: tomorrow };
   }
 
@@ -398,11 +397,14 @@ export class MovementsFiltersService {
    * Obtener rango de fechas para "esta semana"
    */
   private getWeekDateRange(): { dateFrom: Date; dateTo: Date } {
-    const today = new Date();
-    const firstDay = new Date(today.setDate(today.getDate() - today.getDay()));
-    firstDay.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const firstDay = new Date(today);
+    firstDay.setUTCDate(today.getUTCDate() - today.getUTCDay());
+    firstDay.setUTCHours(0, 0, 0, 0);
+
     const lastDay = new Date(firstDay);
-    lastDay.setDate(lastDay.getDate() + 7);
+    lastDay.setUTCDate(lastDay.getUTCDate() + 7);
     return { dateFrom: firstDay, dateTo: lastDay };
   }
 
@@ -410,10 +412,9 @@ export class MovementsFiltersService {
    * Obtener rango de fechas para "este mes"
    */
   private getMonthDateRange(): { dateFrom: Date; dateTo: Date } {
-    const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    lastDay.setHours(23, 59, 59, 999);
+    const now = new Date();
+    const firstDay = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1));
+    const lastDay = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 1));
     return { dateFrom: firstDay, dateTo: lastDay };
   }
 
@@ -421,10 +422,9 @@ export class MovementsFiltersService {
    * Obtener rango de fechas para "últimos 3 meses"
    */
   private getQuarterDateRange(): { dateFrom: Date; dateTo: Date } {
-    const today = new Date();
-    const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 3, 1);
-    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    lastDay.setHours(23, 59, 59, 999);
+    const now = new Date();
+    const threeMonthsAgo = new Date(Date.UTC(now.getFullYear(), now.getMonth() - 3, 1));
+    const lastDay = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 1));
     return { dateFrom: threeMonthsAgo, dateTo: lastDay };
   }
 }

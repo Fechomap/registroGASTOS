@@ -169,18 +169,18 @@ export class MovementsUIService {
     const keyboard = new InlineKeyboard();
 
     // Sección de período
-    const periodIcon = currentFilters.period ? '✅' : '⭕';
+    const periodIcon = currentFilters.period ? '✅' : '◯';
     const periodText = currentFilters.period ? currentFilters.period.label : 'Sin filtrar';
     keyboard.text(`${periodIcon} 📅 Período - ${periodText}`, 'movements_period_select').row();
 
     // Sección de tipo
-    const typeIcon = currentFilters.type ? '✅' : '⭕';
+    const typeIcon = currentFilters.type && currentFilters.type !== 'all' ? '✅' : '◯';
     const typeText = this.getTypeFilterLabel(currentFilters.type);
     keyboard.text(`${typeIcon} 💰 Tipo - ${typeText}`, 'movements_type_select').row();
 
     // Sección de categorías
     const categoriesIcon =
-      currentFilters.categories && currentFilters.categories.length > 0 ? '✅' : '⭕';
+      currentFilters.categories && currentFilters.categories.length > 0 ? '✅' : '◯';
     const categoriesText = this.getCategoriesFilterLabel(currentFilters.categories);
     keyboard
       .text(`${categoriesIcon} 📁 Categorías - ${categoriesText}`, 'movements_categories_select')
@@ -188,14 +188,14 @@ export class MovementsUIService {
 
     // Sección de alcance (solo para admins)
     if (userRole === 'ADMIN') {
-      const scopeIcon = currentFilters.scope ? '✅' : '⭕';
+      const scopeIcon = currentFilters.scope && currentFilters.scope !== 'all' ? '✅' : '◯';
       const scopeText = this.getScopeFilterLabel(currentFilters.scope);
       keyboard.text(`${scopeIcon} 🏢 Alcance - ${scopeText}`, 'movements_scope_select').row();
 
       // Sección de empresas (si hay múltiples)
       if (availableCompanies && availableCompanies.length > 1) {
         const companiesIcon =
-          currentFilters.companies && currentFilters.companies.length > 0 ? '✅' : '⭕';
+          currentFilters.companies && currentFilters.companies.length > 0 ? '✅' : '◯';
         const companiesText = this.getCompaniesFilterLabel(currentFilters.companies);
         keyboard
           .text(`${companiesIcon} 🏭 Empresas - ${companiesText}`, 'movements_companies_select')

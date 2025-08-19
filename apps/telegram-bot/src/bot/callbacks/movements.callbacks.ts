@@ -35,10 +35,16 @@ export async function handleShowMovements(ctx: CallbackQueryContext<MyContext>) 
       ctx.session.filterNavigation = filtersService.createInitialNavigationContext();
     }
 
+    // DEBUG: Verificar estado de filtros
+    console.log('🔍 DEBUG Ver Movimientos:');
+    console.log('  movementFilterState:', JSON.stringify(ctx.session.movementFilterState, null, 2));
+
     // Obtener resumen de movimientos con filtros aplicados
     const filters = ctx.session.movementFilterState.isActive
       ? filtersService.convertToMovementFilters(ctx.session.movementFilterState, user.companyId)
       : { companyId: user.companyId };
+
+    console.log('  filters aplicados:', JSON.stringify(filters, null, 2));
 
     const summary = await movementsService.getMovements(user.companyId, user.id, user.role, {
       page: 1,
@@ -108,42 +114,13 @@ export async function handleShowFiltersMain(ctx: CallbackQueryContext<MyContext>
       availableCompanies,
     });
 
-    // Crear mensaje de filtros
-    const filterStats = uiService.getFilterStats(
-      ctx.session.movementFilterState || filtersService.createInitialFilterState(),
-    );
-
-    // Generar detalles de filtros activos
-    const currentFilters =
-      ctx.session.movementFilterState || filtersService.createInitialFilterState();
-    let filterDetails = '';
-
-    if (currentFilters.period) {
-      filterDetails += `• 📅 ${currentFilters.period.label}\n`;
-    }
-
-    if (currentFilters.type) {
-      const typeConfigs = uiService.getTypeConfigs();
-      const typeConfig = typeConfigs.find(c => c.type === currentFilters.type);
-      filterDetails += `• 💰 ${typeConfig?.label || 'Tipo desconocido'}\n`;
-    }
-
-    if (currentFilters.categories && currentFilters.categories.length > 0) {
-      filterDetails += `• 📁 ${currentFilters.categories.length} categoría${currentFilters.categories.length > 1 ? 's' : ''}\n`;
-    } else {
-      filterDetails += `• 📁 Todas las categorías\n`;
-    }
-
-    if (user.role === 'ADMIN' && currentFilters.scope) {
-      const scopeConfigs = uiService.getScopeConfigs();
-      const scopeConfig = scopeConfigs.find(c => c.type === currentFilters.scope);
-      filterDetails += `• 🏢 ${scopeConfig?.label || 'Alcance desconocido'}\n`;
-    }
-
+    // Mensaje fijo del panel de filtros
     const message =
       `🔍 **Panel de Filtros**\n\n` +
-      `**Estado actual:** ${filterStats.summary}\n` +
-      `${filterDetails}\n` +
+      `**Estado actual:** Sin filtros aplicados\n` +
+      `• 💰 Gastos e Ingresos\n` +
+      `• 📁 Todas las categorías\n` +
+      `• 🏢 Empresariales y Personales\n\n` +
       `Toca cualquier filtro para modificarlo:\n\n` +
       `💡 Los filtros se pueden combinar para obtener resultados más precisos.`;
 
@@ -160,50 +137,31 @@ export async function handleShowFiltersMain(ctx: CallbackQueryContext<MyContext>
 }
 
 /**
- * Ciclar entre opciones de período directamente
+ * Mostrar opciones de filtro de período (lista de selección)
  */
 export async function handlePeriodSelect(ctx: CallbackQueryContext<MyContext>) {
   try {
-    // Inicializar filtros si no existen
-    if (!ctx.session.movementFilterState) {
-      ctx.session.movementFilterState = filtersService.createInitialFilterState();
-    }
-
     const currentPeriod = ctx.session.movementFilterState?.period?.type;
+    const keyboard = uiService.createPeriodSelectionKeyboard(currentPeriod);
 
-    // Ciclar entre las opciones de período
-    let nextPeriod: string;
-    switch (currentPeriod) {
-      case undefined:
-      case 'today':
-        nextPeriod = 'week';
-        break;
-      case 'week':
-        nextPeriod = 'month';
-        break;
-      case 'month':
-        nextPeriod = 'quarter';
-        break;
-      case 'quarter':
-        nextPeriod = 'today';
-        break;
-      default:
-        nextPeriod = 'today';
-    }
+    const message =
+      `🔍 **Panel de Filtros**\n\n` +
+      `**Estado actual:** Sin filtros aplicados\n` +
+      `• 💰 Gastos e Ingresos\n` +
+      `• 📁 Todas las categorías\n` +
+      `• 🏢 Empresariales y Personales\n\n` +
+      `Toca cualquier filtro para modificarlo:\n\n` +
+      `💡 Los filtros se pueden combinar para obtener resultados más precisos.`;
 
-    // Aplicar el nuevo filtro de período
-    ctx.session.movementFilterState = filtersService.applyPeriodFilter(
-      ctx.session.movementFilterState,
-      nextPeriod as PeriodFilter['type'],
-    );
+    await ctx.editMessageText(message, {
+      reply_markup: keyboard,
+      parse_mode: 'Markdown',
+    });
 
-    await ctx.answerCallbackQuery(`✅ Período: ${ctx.session.movementFilterState.period?.label}`);
-
-    // Actualizar el panel de filtros
-    await handleShowFiltersMain(ctx);
+    await ctx.answerCallbackQuery();
   } catch (error) {
     logBotError(error as Error, { command: 'period_select' });
-    await ctx.answerCallbackQuery('❌ Error al cambiar período');
+    await ctx.answerCallbackQuery('❌ Error al cargar selección de período');
   }
 }
 
@@ -233,6 +191,11 @@ export async function handleApplyPeriodFilter(ctx: CallbackQueryContext<MyContex
       periodType,
     );
 
+    // DEBUG: Verificar que el filtro se aplicó correctamente
+    console.log('🔍 DEBUG Aplicar Período:');
+    console.log('  periodType:', periodType);
+    console.log('  nuevo estado:', JSON.stringify(ctx.session.movementFilterState, null, 2));
+
     await ctx.answerCallbackQuery(
       `✅ Período aplicado: ${ctx.session.movementFilterState.period?.label}`,
     );
@@ -246,49 +209,31 @@ export async function handleApplyPeriodFilter(ctx: CallbackQueryContext<MyContex
 }
 
 /**
- * Ciclar entre opciones de tipo directamente
+ * Mostrar opciones de filtro de tipo (lista de selección)
  */
 export async function handleTypeSelect(ctx: CallbackQueryContext<MyContext>) {
   try {
-    // Inicializar filtros si no existen
-    if (!ctx.session.movementFilterState) {
-      ctx.session.movementFilterState = filtersService.createInitialFilterState();
-    }
-
     const currentType = ctx.session.movementFilterState?.type;
+    const keyboard = uiService.createTypeSelectionKeyboard(currentType);
 
-    // Ciclar entre las opciones de tipo
-    let nextType: string;
-    switch (currentType) {
-      case 'all':
-        nextType = 'expense';
-        break;
-      case 'expense':
-        nextType = 'income';
-        break;
-      case 'income':
-        nextType = 'all';
-        break;
-      default:
-        nextType = 'all';
-    }
+    const message =
+      `🔍 **Panel de Filtros**\n\n` +
+      `**Estado actual:** Sin filtros aplicados\n` +
+      `• 💰 Gastos e Ingresos\n` +
+      `• 📁 Todas las categorías\n` +
+      `• 🏢 Empresariales y Personales\n\n` +
+      `Toca cualquier filtro para modificarlo:\n\n` +
+      `💡 Los filtros se pueden combinar para obtener resultados más precisos.`;
 
-    // Aplicar el nuevo filtro de tipo
-    ctx.session.movementFilterState = filtersService.applyTypeFilter(
-      ctx.session.movementFilterState,
-      nextType as MovementTypeFilter,
-    );
+    await ctx.editMessageText(message, {
+      reply_markup: keyboard,
+      parse_mode: 'Markdown',
+    });
 
-    const typeConfigs = uiService.getTypeConfigs();
-    const selectedConfig = typeConfigs.find(c => c.type === nextType);
-
-    await ctx.answerCallbackQuery(`✅ Tipo: ${selectedConfig?.label || nextType}`);
-
-    // Actualizar el panel de filtros
-    await handleShowFiltersMain(ctx);
+    await ctx.answerCallbackQuery();
   } catch (error) {
     logBotError(error as Error, { command: 'type_select' });
-    await ctx.answerCallbackQuery('❌ Error al cambiar tipo');
+    await ctx.answerCallbackQuery('❌ Error al cargar selección de tipo');
   }
 }
 
@@ -356,9 +301,13 @@ export async function handleCategoriesSelect(ctx: CallbackQueryContext<MyContext
     );
 
     const message =
-      `📁 **Seleccionar Categorías**\n\n` +
-      `Elige las categorías a incluir:` +
-      `${currentSelection.length > 0 ? `\n\n**Seleccionadas:** ${currentSelection.length}` : ''}`;
+      `🔍 **Panel de Filtros**\n\n` +
+      `**Estado actual:** Sin filtros aplicados\n` +
+      `• 💰 Gastos e Ingresos\n` +
+      `• 📁 Todas las categorías\n` +
+      `• 🏢 Empresariales y Personales\n\n` +
+      `Toca cualquier filtro para modificarlo:\n\n` +
+      `💡 Los filtros se pueden combinar para obtener resultados más precisos.`;
 
     await ctx.editMessageText(message, {
       reply_markup: keyboard,
@@ -516,7 +465,7 @@ export async function handleClearCategoriesFilter(ctx: CallbackQueryContext<MyCo
 }
 
 /**
- * Ciclar entre opciones de alcance directamente (solo admins)
+ * Mostrar opciones de filtro de alcance (selección directa - solo admins)
  */
 export async function handleScopeSelect(ctx: CallbackQueryContext<MyContext>) {
   const user = ctx.session.user;
@@ -527,45 +476,27 @@ export async function handleScopeSelect(ctx: CallbackQueryContext<MyContext>) {
   }
 
   try {
-    // Inicializar filtros si no existen
-    if (!ctx.session.movementFilterState) {
-      ctx.session.movementFilterState = filtersService.createInitialFilterState();
-    }
-
     const currentScope = ctx.session.movementFilterState?.scope;
+    const keyboard = uiService.createScopeSelectionKeyboard(currentScope);
 
-    // Ciclar entre las opciones de alcance
-    let nextScope: string;
-    switch (currentScope) {
-      case 'all':
-        nextScope = 'company';
-        break;
-      case 'company':
-        nextScope = 'personal';
-        break;
-      case 'personal':
-        nextScope = 'all';
-        break;
-      default:
-        nextScope = 'all';
-    }
+    const message =
+      `🔍 **Panel de Filtros**\n\n` +
+      `**Estado actual:** Sin filtros aplicados\n` +
+      `• 💰 Gastos e Ingresos\n` +
+      `• 📁 Todas las categorías\n` +
+      `• 🏢 Empresariales y Personales\n\n` +
+      `Toca cualquier filtro para modificarlo:\n\n` +
+      `💡 Los filtros se pueden combinar para obtener resultados más precisos.`;
 
-    // Aplicar el nuevo filtro de alcance
-    ctx.session.movementFilterState = filtersService.applyScopeFilter(
-      ctx.session.movementFilterState,
-      nextScope as ScopeFilter,
-    );
+    await ctx.editMessageText(message, {
+      reply_markup: keyboard,
+      parse_mode: 'Markdown',
+    });
 
-    const scopeConfigs = uiService.getScopeConfigs();
-    const selectedConfig = scopeConfigs.find(c => c.type === nextScope);
-
-    await ctx.answerCallbackQuery(`✅ Alcance: ${selectedConfig?.label || nextScope}`);
-
-    // Actualizar el panel de filtros
-    await handleShowFiltersMain(ctx);
+    await ctx.answerCallbackQuery();
   } catch (error) {
     logBotError(error as Error, { command: 'scope_select' });
-    await ctx.answerCallbackQuery('❌ Error al cambiar alcance');
+    await ctx.answerCallbackQuery('❌ Error al cargar selección de alcance');
   }
 }
 
@@ -625,17 +556,17 @@ export async function handleApplyFilters(ctx: CallbackQueryContext<MyContext>) {
 }
 
 /**
- * Limpiar todos los filtros
+ * Limpiar todos los filtros (sin restricciones)
  */
 export async function handleClearAllFilters(ctx: CallbackQueryContext<MyContext>) {
   try {
-    // Limpiar estado de filtros
+    // Limpiar completamente los filtros (sin restricciones)
     ctx.session.movementFilterState = filtersService.clearAllFilters();
 
     await ctx.answerCallbackQuery('✅ Todos los filtros han sido limpiados');
 
-    // Regresar a ver movimientos sin filtros
-    await handleShowMovements(ctx);
+    // Regresar al panel de filtros para mostrar el estado limpio
+    await handleShowFiltersMain(ctx);
   } catch (error) {
     logBotError(error as Error, { command: 'clear_all_filters' });
     await ctx.answerCallbackQuery('❌ Error al limpiar filtros');
