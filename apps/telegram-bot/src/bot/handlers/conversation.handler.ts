@@ -147,7 +147,7 @@ export async function startExpenseFlow(ctx: Context & MyContext) {
     const userCompanies = await userRepository.getUserCompanies(user.id);
     const companies = userCompanies.map(uc => ({
       id: uc.company.id,
-      name: uc.company.name
+      name: uc.company.name,
     }));
 
     const registerFlow: RegisterFlowData = {
@@ -162,7 +162,7 @@ export async function startExpenseFlow(ctx: Context & MyContext) {
     });
   } catch (error) {
     console.error('Error getting user companies for admin:', error);
-    
+
     // Fallback al menú sin nombres de empresa
     const registerFlow: RegisterFlowData = {
       step: 'expense_type',

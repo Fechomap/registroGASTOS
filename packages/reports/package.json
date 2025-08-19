@@ -16,6 +16,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@financial-bot/database": "workspace:*",
     "@financial-bot/shared": "workspace:*",
     "exceljs": "^4.4.0",
     "pdfkit": "^0.14.0"

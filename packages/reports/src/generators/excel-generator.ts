@@ -1,12 +1,12 @@
 import ExcelJS from 'exceljs';
-import { MovementWithRelations } from '@financial-bot/database';
+import { MovementWithRelations, PersonalMovementWithRelations } from '@financial-bot/database';
 import { formatCurrency, formatDate } from '@financial-bot/shared';
 import { MovementFilters } from '../filters/movement-filters';
 
 export interface ExcelReportOptions {
   companyName: string;
   filters: MovementFilters;
-  movements: MovementWithRelations[];
+  movements: (MovementWithRelations | PersonalMovementWithRelations)[];
   includeCharts?: boolean;
   groupByCategory?: boolean;
 }
@@ -52,7 +52,7 @@ export class ExcelReportGenerator {
 
   private async createSummarySheet(
     companyName: string,
-    movements: MovementWithRelations[],
+    movements: (MovementWithRelations | PersonalMovementWithRelations)[],
     filters: MovementFilters,
   ) {
     const worksheet = this.workbook.addWorksheet('Resumen');
@@ -105,7 +105,9 @@ export class ExcelReportGenerator {
     this.applyHeaderStyles(worksheet);
   }
 
-  private async createMovementsSheet(movements: MovementWithRelations[]) {
+  private async createMovementsSheet(
+    movements: (MovementWithRelations | PersonalMovementWithRelations)[],
+  ) {
     const worksheet = this.workbook.addWorksheet('Movimientos Detallados');
 
     // Configurar columnas con formatos específicos
@@ -152,7 +154,9 @@ export class ExcelReportGenerator {
     this.applyBorders(worksheet, movements.length + 1);
   }
 
-  private async createCategoriesSheet(movements: MovementWithRelations[]) {
+  private async createCategoriesSheet(
+    movements: (MovementWithRelations | PersonalMovementWithRelations)[],
+  ) {
     const worksheet = this.workbook.addWorksheet('Por Categorías');
 
     // Agrupar por categoría
@@ -201,7 +205,9 @@ export class ExcelReportGenerator {
     this.applyBorders(worksheet, Object.keys(categoryGroups).length + 1);
   }
 
-  private async createChartsSheet(movements: MovementWithRelations[]) {
+  private async createChartsSheet(
+    movements: (MovementWithRelations | PersonalMovementWithRelations)[],
+  ) {
     const worksheet = this.workbook.addWorksheet('Gráficos');
 
     // Datos para gráfico de categorías
@@ -241,7 +247,9 @@ export class ExcelReportGenerator {
     return parts.length > 0 ? parts.join(', ') : 'Todos los movimientos';
   }
 
-  private groupByUser(movements: MovementWithRelations[]): Record<string, MovementWithRelations[]> {
+  private groupByUser(
+    movements: (MovementWithRelations | PersonalMovementWithRelations)[],
+  ): Record<string, (MovementWithRelations | PersonalMovementWithRelations)[]> {
     return movements.reduce(
       (groups, movement) => {
         const userName = `${movement.user.firstName} ${movement.user.lastName || ''}`.trim();
@@ -251,13 +259,13 @@ export class ExcelReportGenerator {
         groups[userName].push(movement);
         return groups;
       },
-      {} as Record<string, MovementWithRelations[]>,
+      {} as Record<string, (MovementWithRelations | PersonalMovementWithRelations)[]>,
     );
   }
 
   private groupByCategory(
-    movements: MovementWithRelations[],
-  ): Record<string, MovementWithRelations[]> {
+    movements: (MovementWithRelations | PersonalMovementWithRelations)[],
+  ): Record<string, (MovementWithRelations | PersonalMovementWithRelations)[]> {
     return movements.reduce(
       (groups, movement) => {
         const categoryName = movement.category?.name || 'Sin categoría';
@@ -267,7 +275,7 @@ export class ExcelReportGenerator {
         groups[categoryName].push(movement);
         return groups;
       },
-      {} as Record<string, MovementWithRelations[]>,
+      {} as Record<string, (MovementWithRelations | PersonalMovementWithRelations)[]>,
     );
   }
 

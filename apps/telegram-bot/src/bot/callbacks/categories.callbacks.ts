@@ -1,9 +1,6 @@
 import { CallbackQueryContext } from 'grammy';
 import { MyContext, CategoryManagementData } from '../../types';
-import { 
-  categoryRepository, 
-  Category
-} from '@financial-bot/database';
+import { categoryRepository } from '@financial-bot/database';
 import { logBotError } from '../../utils/logger';
 import { InlineKeyboard } from 'grammy';
 
@@ -39,7 +36,7 @@ export async function handleCategoriesList(ctx: CallbackQueryContext<MyContext>)
         reply_markup: keyboard,
         parse_mode: 'Markdown',
       });
-      
+
       await ctx.answerCallbackQuery();
       return;
     }
@@ -53,7 +50,7 @@ export async function handleCategoriesList(ctx: CallbackQueryContext<MyContext>)
       if (parent.color) {
         message += `   🎨 Color: ${parent.color}\n`;
       }
-      
+
       // Buscar subcategorías
       const children = childCategories.filter(child => child.parentId === parent.id);
       if (children.length > 0) {
@@ -66,15 +63,14 @@ export async function handleCategoriesList(ctx: CallbackQueryContext<MyContext>)
 
     // Crear teclado con acciones
     const keyboard = new InlineKeyboard();
-    
+
     // Botones para categorías (primeras 8)
     categories.slice(0, 8).forEach((category, index) => {
-      const shortName = category.name.length > 12 
-        ? category.name.substring(0, 9) + '...' 
-        : category.name;
-      
+      const shortName =
+        category.name.length > 12 ? category.name.substring(0, 9) + '...' : category.name;
+
       keyboard.text(`${category.icon || '📁'} ${shortName}`, `category_manage_${category.id}`);
-      
+
       if ((index + 1) % 2 === 0) {
         keyboard.row();
       }
@@ -113,7 +109,8 @@ export async function handleCategoriesAdd(ctx: CallbackQueryContext<MyContext>) 
     return;
   }
 
-  const message = `➕ **Crear Nueva Categoría**\n\n` +
+  const message =
+    `➕ **Crear Nueva Categoría**\n\n` +
     `🏢 **Empresa:** ${user.company.name}\n\n` +
     `Para crear una categoría, usa el comando:\n` +
     `\`/categoria_agregar [nombre] [icono] [color]\`\n\n` +

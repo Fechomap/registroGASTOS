@@ -226,7 +226,6 @@ export function setupCommands(bot: Bot<MyContext>) {
   bot.command('categorias', categoriesCommand);
   bot.command('categories', categoriesCommand); // Alias en inglés
 
-
   // Manejar mensajes de texto que no son comandos
   bot.on('message:text', async ctx => {
     // Si no es un comando, verificar si está en una conversación

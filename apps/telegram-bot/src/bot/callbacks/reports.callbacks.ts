@@ -1,11 +1,10 @@
 import { CallbackQueryContext, InputFile } from 'grammy';
 import { MyContext } from '../../types';
 import { ReportsService, ReportFilters } from '../../services/reports.service';
-import { 
+import {
   categoryRepository,
   personalCategoryRepository,
   userRepository,
-  MovementWithRelations
 } from '@financial-bot/database';
 import { MovementFilterBuilder } from '@financial-bot/reports';
 import { logBotError } from '../../utils/logger';
@@ -34,12 +33,17 @@ export async function handleShowReportsPanel(ctx: CallbackQueryContext<MyContext
       user.companyId,
       user.id,
       user.role,
-      ctx.session.reportFilters
+      ctx.session.reportFilters,
     );
 
     // Crear teclado y mensaje
     const keyboard = reportsService.createReportsKeyboard(ctx.session.reportFilters, user.role);
-    const message = reportsService.formatReportsMessage(summary, user.company.name, user.role, user.firstName);
+    const message = reportsService.formatReportsMessage(
+      summary,
+      user.company.name,
+      user.role,
+      user.firstName,
+    );
 
     await ctx.editMessageText(message, {
       reply_markup: keyboard,
@@ -62,7 +66,7 @@ export async function handlePeriodFilter(ctx: CallbackQueryContext<MyContext>) {
 
   try {
     const currentPeriod = ctx.session.reportFilters?.period || 'month';
-    
+
     // Rotar entre períodos disponibles
     const periods = ['today', 'week', 'month', 'custom'];
     const currentIndex = periods.indexOf(currentPeriod);
@@ -92,7 +96,7 @@ export async function handleTypeFilter(ctx: CallbackQueryContext<MyContext>) {
 
   try {
     const currentType = ctx.session.reportFilters?.type || 'ALL';
-    
+
     // Rotar entre tipos
     const types = ['ALL', 'EXPENSE', 'INCOME'];
     const currentIndex = types.indexOf(currentType);
@@ -125,7 +129,7 @@ export async function handleScopeFilter(ctx: CallbackQueryContext<MyContext>) {
 
   try {
     const currentScope = ctx.session.reportFilters?.scope || 'ALL';
-    
+
     // Rotar entre scopes
     const scopes = ['ALL', 'COMPANY', 'PERSONAL'];
     const currentIndex = scopes.indexOf(currentScope);
@@ -156,21 +160,28 @@ export async function handleCategoryFilter(ctx: CallbackQueryContext<MyContext>)
   try {
     // Obtener categorías disponibles según el scope actual
     const scope = ctx.session.reportFilters?.scope || 'ALL';
-    let categories: any[] = [];
+    let rawCategories: Array<{ id: string; name: string; icon: string | null }> = [];
 
     if (user.role === 'ADMIN') {
       if (scope === 'COMPANY' || scope === 'ALL') {
         const companyCategories = await categoryRepository.findByCompany(user.companyId);
-        categories = [...categories, ...companyCategories];
+        rawCategories = [...rawCategories, ...companyCategories];
       }
       if (scope === 'PERSONAL' || scope === 'ALL') {
         const personalCategories = await personalCategoryRepository.findByUser(user.id);
-        categories = [...categories, ...personalCategories];
+        rawCategories = [...rawCategories, ...personalCategories];
       }
     } else {
       // Operadores solo ven categorías personales
-      categories = await personalCategoryRepository.findByUser(user.id);
+      rawCategories = await personalCategoryRepository.findByUser(user.id);
     }
+
+    // Transformar a formato esperado
+    const categories = rawCategories.map(cat => ({
+      id: cat.id,
+      name: cat.name,
+      icon: cat.icon || undefined,
+    }));
 
     if (categories.length === 0) {
       await ctx.answerCallbackQuery('📭 No hay categorías disponibles');
@@ -205,7 +216,7 @@ export async function handleCategorySelection(ctx: CallbackQueryContext<MyContex
 
   try {
     const categoryId = data.replace('reports_category_', '');
-    
+
     if (categoryId === 'all') {
       // Limpiar filtro de categoría
       if (ctx.session.reportFilters) {
@@ -214,7 +225,8 @@ export async function handleCategorySelection(ctx: CallbackQueryContext<MyContex
       }
     } else {
       // Buscar la categoría seleccionada
-      let category: any = await categoryRepository.findById(categoryId);
+      let category: { id: string; name: string } | null =
+        await categoryRepository.findById(categoryId);
       if (!category) {
         category = await personalCategoryRepository.findById(categoryId);
       }
@@ -257,7 +269,13 @@ export async function handleUserFilter(ctx: CallbackQueryContext<MyContext>) {
     let message = `👤 **Seleccionar Usuario**\n\n`;
     message += `Elige un usuario para filtrar los movimientos:\n\n`;
 
-    const keyboard = reportsService.createUserSelectionKeyboard(users);
+    const keyboard = reportsService.createUserSelectionKeyboard(
+      users.map(user => ({
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName || undefined,
+      })),
+    );
 
     await ctx.editMessageText(message, {
       reply_markup: keyboard,
@@ -281,7 +299,7 @@ export async function handleUserSelection(ctx: CallbackQueryContext<MyContext>) 
 
   try {
     const userId = data.replace('reports_user_', '');
-    
+
     if (userId === 'all') {
       // Limpiar filtro de usuario
       if (ctx.session.reportFilters) {
@@ -297,7 +315,8 @@ export async function handleUserSelection(ctx: CallbackQueryContext<MyContext>) 
           ctx.session.reportFilters = reportsService.createDefaultFilters();
         }
         ctx.session.reportFilters.userId = userId;
-        ctx.session.reportFilters.userName = `${selectedUser.firstName} ${selectedUser.lastName || ''}`.trim();
+        ctx.session.reportFilters.userName =
+          `${selectedUser.firstName} ${selectedUser.lastName || ''}`.trim();
       }
     }
 
@@ -340,39 +359,52 @@ export async function handleGenerateReports(ctx: CallbackQueryContext<MyContext>
     await ctx.answerCallbackQuery('📊 Generando reportes...');
 
     const filters = ctx.session.reportFilters || reportsService.createDefaultFilters();
-    
+
     // Obtener todos los movimientos con filtros aplicados
-    const allMovements = await reportsService.getAllMovements(user.companyId, user.id, user.role, filters);
-    
+    const allMovements = await reportsService.getAllMovements(
+      user.companyId,
+      user.id,
+      user.role,
+      filters,
+    );
+
     if (allMovements.length === 0) {
-      await ctx.reply('📭 **No hay movimientos para exportar**\n\nAjusta los filtros para incluir más datos.');
+      await ctx.reply(
+        '📭 **No hay movimientos para exportar**\n\nAjusta los filtros para incluir más datos.',
+      );
       return;
     }
 
     // Crear filtros para los generadores
     const filterBuilder = new MovementFilterBuilder(user.companyId);
     switch (filters.period) {
-      case 'today': filterBuilder.today(); break;
-      case 'week': filterBuilder.thisWeek(); break;
-      case 'month': filterBuilder.thisMonth(); break;
+      case 'today':
+        filterBuilder.today();
+        break;
+      case 'week':
+        filterBuilder.thisWeek();
+        break;
+      case 'month':
+        filterBuilder.thisMonth();
+        break;
     }
     if (filters.categoryId) filterBuilder.byCategory(filters.categoryId);
     if (filters.userId) filterBuilder.byUser(filters.userId);
-    if (filters.type !== 'ALL') filterBuilder.byType(filters.type as any);
+    if (filters.type !== 'ALL') filterBuilder.byType(filters.type as 'EXPENSE' | 'INCOME');
     const dbFilters = filterBuilder.build();
 
     // Generar Excel
     const excelBuffer = await reportsService.generateExcelReport(
       user.company.name,
       allMovements,
-      dbFilters
+      dbFilters,
     );
 
     // Generar PDF
     const pdfBuffer = await reportsService.generatePDFReport(
       user.company.name,
       allMovements,
-      dbFilters
+      dbFilters,
     );
 
     // Crear nombres de archivo con fecha
@@ -383,19 +415,23 @@ export async function handleGenerateReports(ctx: CallbackQueryContext<MyContext>
     // Enviar Excel
     await ctx.api.sendDocument(ctx.chat!.id, new InputFile(excelBuffer, excelFileName), {
       caption: `📊 **Reporte Excel - ${user.company.name}**\n\nMovimientos: ${allMovements.length}\nGenerado: ${new Date().toLocaleDateString('es-MX')}`,
-      parse_mode: 'Markdown'
+      parse_mode: 'Markdown',
     });
 
     // Enviar PDF
     await ctx.api.sendDocument(ctx.chat!.id, new InputFile(pdfBuffer, pdfFileName), {
       caption: `📄 **Reporte PDF - ${user.company.name}**\n\nMovimientos: ${allMovements.length}\nGenerado: ${new Date().toLocaleDateString('es-MX')}`,
-      parse_mode: 'Markdown'
+      parse_mode: 'Markdown',
     });
 
-    await ctx.reply('✅ **Reportes generados exitosamente**\n\nSe han enviado los archivos Excel y PDF con todos los movimientos filtrados.');
-    
+    await ctx.reply(
+      '✅ **Reportes generados exitosamente**\n\nSe han enviado los archivos Excel y PDF con todos los movimientos filtrados.',
+    );
   } catch (error) {
     logBotError(error as Error, { command: 'generate_reports' });
-    await ctx.api.sendMessage(ctx.chat!.id, '❌ Error al generar los reportes. Inténtalo de nuevo.');
+    await ctx.api.sendMessage(
+      ctx.chat!.id,
+      '❌ Error al generar los reportes. Inténtalo de nuevo.',
+    );
   }
 }

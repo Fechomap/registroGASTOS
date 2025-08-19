@@ -1,18 +1,18 @@
-import { 
-  movementRepository, 
-  MovementWithRelations, 
+import {
+  movementRepository,
+  MovementWithRelations,
   personalMovementRepository,
-  userRepository
+  userRepository,
+  PersonalMovementWithRelations,
 } from '@financial-bot/database';
-import { 
-  MovementFilterBuilder, 
+import {
+  MovementFilterBuilder,
   MovementFilters,
   ExcelReportGenerator,
   PDFReportGenerator,
   ExcelReportOptions,
-  PDFReportOptions 
+  PDFReportOptions,
 } from '@financial-bot/reports';
-import { MyContext } from '../types';
 import { InlineKeyboard } from 'grammy';
 
 export interface MovementViewOptions {
@@ -27,7 +27,7 @@ export interface MovementSummary {
   totalExpenses: number;
   totalIncomes: number;
   balance: number;
-  movements: (MovementWithRelations | any)[];
+  movements: (MovementWithRelations | PersonalMovementWithRelations)[];
   pagination: {
     page: number;
     totalPages: number;
@@ -38,41 +38,50 @@ export interface MovementSummary {
 
 export class MovementsService {
   async getMovements(
-    companyId: string, 
-    userId: string, 
+    companyId: string,
+    userId: string,
     userRole: 'ADMIN' | 'OPERATOR',
-    options: MovementViewOptions = {}
+    options: MovementViewOptions = {},
   ): Promise<MovementSummary> {
     const { page = 1, limit = 10, filters, includePersonal = false } = options;
     const skip = (page - 1) * limit;
 
-    let movements: (MovementWithRelations | any)[] = [];
+    let movements: (MovementWithRelations | PersonalMovementWithRelations)[] = [];
     let totalCount = 0;
 
     // Para admins: pueden ver movimientos empresariales + sus personales
     if (userRole === 'ADMIN') {
       // Movimientos empresariales (con filtros si se proporcionan)
       const companyFilters = filters || { companyId };
-      
-      const companyMovements = await movementRepository.findMany(companyFilters, { skip, take: limit });
+
+      const companyMovements = await movementRepository.findMany(companyFilters, {
+        skip,
+        take: limit,
+      });
       const companyCount = await movementRepository.count(companyFilters);
-      
+
       movements = [...companyMovements];
       totalCount = companyCount;
 
       // Si incluye personales, agregar movimientos personales del admin
       if (includePersonal) {
-        const personalMovements = await personalMovementRepository.findByUser(userId, { offset: 0, limit: limit });
+        const personalMovements = await personalMovementRepository.findByUser(userId, {
+          offset: 0,
+          limit: limit,
+        });
         movements = [...movements, ...personalMovements];
         totalCount += personalMovements.length;
       }
     } else {
       // Para operadores: solo movimientos personales
-      const personalMovements = await personalMovementRepository.findByUser(userId, { offset: skip, limit: limit });
+      const personalMovements = await personalMovementRepository.findByUser(userId, {
+        offset: skip,
+        limit: limit,
+      });
       // Contar total de movimientos personales (usar findByUser sin limit para contar)
       const allPersonalMovements = await personalMovementRepository.findByUser(userId);
       const personalCount = allPersonalMovements.length;
-      
+
       movements = personalMovements;
       totalCount = personalCount;
     }
@@ -83,7 +92,7 @@ export class MovementsService {
     // Calcular totales
     const expenses = movements.filter(m => m.type === 'EXPENSE');
     const incomes = movements.filter(m => m.type === 'INCOME');
-    
+
     const totalExpenses = expenses.reduce((sum, m) => sum + Number(m.amount), 0);
     const totalIncomes = incomes.reduce((sum, m) => sum + Number(m.amount), 0);
     const balance = totalIncomes - totalExpenses;
@@ -110,9 +119,9 @@ export class MovementsService {
   }
 
   createMovementsKeyboard(
-    summary: MovementSummary, 
+    summary: MovementSummary,
     userRole: 'ADMIN' | 'OPERATOR',
-    currentFilters?: MovementFilters
+    _currentFilters?: MovementFilters,
   ): InlineKeyboard {
     const keyboard = new InlineKeyboard();
 
@@ -142,25 +151,26 @@ export class MovementsService {
     if (summary.pagination.hasPrev) {
       keyboard.text('⬅️ Anterior', `movements_page_${summary.pagination.page - 1}`);
     }
-    
+
     if (summary.pagination.hasNext) {
       keyboard.text('➡️ Siguiente', `movements_page_${summary.pagination.page + 1}`);
     }
-    
+
     if (summary.pagination.hasPrev || summary.pagination.hasNext) {
       keyboard.row();
     }
 
     // Botones de acción para movimientos individuales (primeros 5)
-    summary.movements.slice(0, 5).forEach((movement, index) => {
+    summary.movements.slice(0, 5).forEach((movement, _index) => {
       const movementId = movement.id;
-      const shortDescription = movement.description.length > 20 
-        ? movement.description.substring(0, 17) + '...' 
-        : movement.description;
-      
+      const shortDescription =
+        movement.description.length > 20
+          ? movement.description.substring(0, 17) + '...'
+          : movement.description;
+
       keyboard.text(`📝 ${shortDescription}`, `movement_detail_${movementId}`);
-      
-      if ((index + 1) % 2 === 0) {
+
+      if ((_index + 1) % 2 === 0) {
         keyboard.row();
       }
     });
@@ -174,10 +184,10 @@ export class MovementsService {
   async generateExcelReport(
     companyName: string,
     movements: MovementWithRelations[],
-    filters: MovementFilters
+    filters: MovementFilters,
   ): Promise<Buffer> {
     const generator = new ExcelReportGenerator();
-    
+
     const options: ExcelReportOptions = {
       companyName,
       movements,
@@ -192,10 +202,10 @@ export class MovementsService {
   async generatePDFReport(
     companyName: string,
     movements: MovementWithRelations[],
-    filters: MovementFilters
+    filters: MovementFilters,
   ): Promise<Buffer> {
     const generator = new PDFReportGenerator();
-    
+
     const options: PDFReportOptions = {
       companyName,
       movements,
@@ -211,10 +221,10 @@ export class MovementsService {
     summary: MovementSummary,
     companyName: string,
     userRole: 'ADMIN' | 'OPERATOR',
-    userName: string
+    userName: string,
   ): string {
     let message = `📊 **Ver Movimientos - ${companyName}**\n\n`;
-    
+
     if (userRole === 'ADMIN') {
       message += `👑 **Admin:** ${userName}\n`;
     } else {
@@ -235,15 +245,15 @@ export class MovementsService {
 
     message += `📋 **Últimos movimientos** (Página ${summary.pagination.page} de ${summary.pagination.totalPages}):\n\n`;
 
-    summary.movements.forEach((movement, index) => {
+    summary.movements.forEach((movement, _index) => {
       const typeIcon = movement.type === 'EXPENSE' ? '💸' : '💰';
       const amount = `$${Number(movement.amount).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
       const date = new Date(movement.date).toLocaleDateString('es-MX');
-      
+
       // Determinar si es movimiento empresarial o personal
       const isPersonal = 'userId' in movement && !('companyId' in movement);
       const typeLabel = isPersonal ? '👤 Personal' : '🏢 Empresarial';
-      
+
       message += `${typeIcon} **${movement.folio}** ${typeLabel}\n`;
       message += `💰 ${amount}\n`;
       message += `📝 ${movement.description}\n`;
@@ -270,11 +280,11 @@ export class MovementsService {
     return message;
   }
 
-  async getCompaniesForUser(userId: string): Promise<Array<{id: string, name: string}>> {
+  async getCompaniesForUser(userId: string): Promise<Array<{ id: string; name: string }>> {
     const userCompanies = await userRepository.getUserCompanies(userId);
     return userCompanies.map(uc => ({
       id: uc.company.id,
-      name: uc.company.name
+      name: uc.company.name,
     }));
   }
 

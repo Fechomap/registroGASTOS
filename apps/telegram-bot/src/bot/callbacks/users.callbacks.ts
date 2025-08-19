@@ -1,11 +1,6 @@
 import { CallbackQueryContext } from 'grammy';
 import { MyContext } from '../../types';
-import { 
-  userRepository, 
-  UserRole, 
-  personalCategoryRepository,
-  User 
-} from '@financial-bot/database';
+import { userRepository, UserRole } from '@financial-bot/database';
 import { formatDate } from '@financial-bot/shared';
 import { logBotError } from '../../utils/logger';
 import { InlineKeyboard } from 'grammy';
@@ -25,7 +20,8 @@ export async function handleUsersList(ctx: CallbackQueryContext<MyContext>) {
     const users = await userRepository.findByCompany(user.companyId);
 
     if (users.length === 0) {
-      const message = `👥 **Lista de Usuarios**\n\n` +
+      const message =
+        `👥 **Lista de Usuarios**\n\n` +
         `📋 No hay usuarios registrados en la empresa.\n\n` +
         `Usa "Agregar Usuario" para invitar usuarios.`;
 
@@ -38,7 +34,7 @@ export async function handleUsersList(ctx: CallbackQueryContext<MyContext>) {
         reply_markup: keyboard,
         parse_mode: 'Markdown',
       });
-      
+
       await ctx.answerCallbackQuery();
       return;
     }
@@ -69,14 +65,15 @@ export async function handleUsersList(ctx: CallbackQueryContext<MyContext>) {
 
     // Crear teclado con acciones para usuarios (primeros 8)
     const keyboard = new InlineKeyboard();
-    
+
     activeUsers.slice(0, 8).forEach((companyUser, index) => {
-      const shortName = companyUser.firstName.length > 12 
-        ? companyUser.firstName.substring(0, 9) + '...' 
-        : companyUser.firstName;
-      
+      const shortName =
+        companyUser.firstName.length > 12
+          ? companyUser.firstName.substring(0, 9) + '...'
+          : companyUser.firstName;
+
       keyboard.text(`👤 ${shortName}`, `user_manage_${companyUser.id}`);
-      
+
       if ((index + 1) % 2 === 0) {
         keyboard.row();
       }
@@ -115,7 +112,8 @@ export async function handleUsersAdd(ctx: CallbackQueryContext<MyContext>) {
     return;
   }
 
-  const message = `➕ **Agregar Nuevo Usuario**\n\n` +
+  const message =
+    `➕ **Agregar Nuevo Usuario**\n\n` +
     `🏢 **Empresa:** ${user.company.name}\n\n` +
     `Para agregar un usuario, necesitas su **Chat ID** de Telegram.\n\n` +
     `📝 **Pasos:**\n` +
@@ -145,7 +143,8 @@ export async function handleUsersAdd(ctx: CallbackQueryContext<MyContext>) {
  * Mostrar ayuda para obtener Chat ID
  */
 export async function handleUsersHelpChatId(ctx: CallbackQueryContext<MyContext>) {
-  const message = `❓ **Cómo obtener el Chat ID**\n\n` +
+  const message =
+    `❓ **Cómo obtener el Chat ID**\n\n` +
     `📱 **Opción 1: Bot @userinfobot**\n` +
     `1. Buscar @userinfobot en Telegram\n` +
     `2. Enviar /start al bot\n` +
@@ -159,8 +158,7 @@ export async function handleUsersHelpChatId(ctx: CallbackQueryContext<MyContext>
     `⚠️ **Importante:**\n` +
     `El usuario debe haber iniciado conversación con este bot antes.`;
 
-  const keyboard = new InlineKeyboard()
-    .text('◀️ Volver a Agregar', 'users_add');
+  const keyboard = new InlineKeyboard().text('◀️ Volver a Agregar', 'users_add');
 
   await ctx.editMessageText(message, {
     reply_markup: keyboard,
@@ -191,7 +189,8 @@ export async function handleUserManage(ctx: CallbackQueryContext<MyContext>) {
     const roleText = targetUser.role === 'ADMIN' ? '👑 Administrador' : '👤 Operador';
     const statusText = targetUser.isActive ? '✅ Activo' : '❌ Inactivo';
 
-    const message = `👤 **Gestionar Usuario**\n\n` +
+    const message =
+      `👤 **Gestionar Usuario**\n\n` +
       `**Información:**\n` +
       `👤 **Nombre:** ${targetUser.firstName} ${targetUser.lastName || ''}\n` +
       `👔 **Rol:** ${roleText}\n` +
@@ -203,18 +202,17 @@ export async function handleUserManage(ctx: CallbackQueryContext<MyContext>) {
     const keyboard = new InlineKeyboard();
 
     // Opciones según el estado del usuario
-    if (targetUser.id !== user.id) { // No puede gestionarse a sí mismo
+    if (targetUser.id !== user.id) {
+      // No puede gestionarse a sí mismo
       if (targetUser.isActive) {
         keyboard
           .text('🔄 Cambiar Rol', `user_change_role_${targetUser.id}`)
           .text('🚫 Desactivar', `user_deactivate_${targetUser.id}`)
           .row();
       } else {
-        keyboard
-          .text('✅ Reactivar', `user_activate_${targetUser.id}`)
-          .row();
+        keyboard.text('✅ Reactivar', `user_activate_${targetUser.id}`).row();
       }
-      
+
       keyboard.text('🗑️ Eliminar', `user_delete_confirm_${targetUser.id}`).row();
     } else {
       keyboard.text('ℹ️ No puedes gestionarte a ti mismo', 'user_self_error').row();
@@ -259,7 +257,8 @@ export async function handleUserChangeRole(ctx: CallbackQueryContext<MyContext>)
     const newRoleText = newRole === UserRole.ADMIN ? 'Administrador' : 'Operador';
     const currentRoleText = targetUser.role === 'ADMIN' ? 'Administrador' : 'Operador';
 
-    const message = `🔄 **Cambiar Rol de Usuario**\n\n` +
+    const message =
+      `🔄 **Cambiar Rol de Usuario**\n\n` +
       `👤 **Usuario:** ${targetUser.firstName} ${targetUser.lastName || ''}\n` +
       `👔 **Rol Actual:** ${currentRoleText}\n` +
       `🔄 **Nuevo Rol:** ${newRoleText}\n\n` +
@@ -309,7 +308,8 @@ export async function handleUserRoleConfirm(ctx: CallbackQueryContext<MyContext>
 
     const newRoleText = newRole === UserRole.ADMIN ? 'Administrador' : 'Operador';
 
-    const message = `✅ **Rol Actualizado**\n\n` +
+    const message =
+      `✅ **Rol Actualizado**\n\n` +
       `👤 **Usuario:** ${targetUser.firstName} ${targetUser.lastName || ''}\n` +
       `👔 **Nuevo Rol:** ${newRoleText}\n\n` +
       `Los cambios son efectivos inmediatamente.`;
@@ -354,7 +354,8 @@ export async function handleUserDeleteConfirm(ctx: CallbackQueryContext<MyContex
       return;
     }
 
-    const message = `⚠️ **Confirmar Eliminación**\n\n` +
+    const message =
+      `⚠️ **Confirmar Eliminación**\n\n` +
       `👤 **Usuario:** ${targetUser.firstName} ${targetUser.lastName || ''}\n` +
       `👔 **Rol:** ${targetUser.role === 'ADMIN' ? 'Administrador' : 'Operador'}\n` +
       `📅 **Miembro desde:** ${formatDate(targetUser.createdAt)}\n\n` +
@@ -409,7 +410,8 @@ export async function handleUserDeleteFinal(ctx: CallbackQueryContext<MyContext>
     // Eliminar el usuario
     await userRepository.delete(targetUser.id);
 
-    const message = `✅ **Usuario Eliminado**\n\n` +
+    const message =
+      `✅ **Usuario Eliminado**\n\n` +
       `🗑️ **Usuario eliminado exitosamente:**\n` +
       `👤 **Nombre:** ${targetUser.firstName} ${targetUser.lastName || ''}\n` +
       `👔 **Rol:** ${targetUser.role === 'ADMIN' ? 'Administrador' : 'Operador'}\n` +
@@ -450,7 +452,8 @@ export async function handleUsersRoles(ctx: CallbackQueryContext<MyContext>) {
     const otherUsers = users.filter(u => u.id !== user.id && u.isActive);
 
     if (otherUsers.length === 0) {
-      const message = `🔄 **Cambiar Roles**\n\n` +
+      const message =
+        `🔄 **Cambiar Roles**\n\n` +
         `No hay otros usuarios activos para gestionar.\n\n` +
         `Agrega usuarios primero para poder cambiar sus roles.`;
 
@@ -477,12 +480,13 @@ export async function handleUsersRoles(ctx: CallbackQueryContext<MyContext>) {
 
     otherUsers.slice(0, 10).forEach((targetUser, index) => {
       const roleIcon = targetUser.role === 'ADMIN' ? '👑' : '👤';
-      const shortName = targetUser.firstName.length > 15 
-        ? targetUser.firstName.substring(0, 12) + '...' 
-        : targetUser.firstName;
-      
+      const shortName =
+        targetUser.firstName.length > 15
+          ? targetUser.firstName.substring(0, 12) + '...'
+          : targetUser.firstName;
+
       keyboard.text(`${roleIcon} ${shortName}`, `user_change_role_${targetUser.id}`);
-      
+
       if ((index + 1) % 2 === 0) {
         keyboard.row();
       }

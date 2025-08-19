@@ -1,4 +1,11 @@
-import { PersonalMovement, Prisma, MovementType, User, PersonalCategory, PersonalAttachment } from '@prisma/client';
+import {
+  PersonalMovement,
+  Prisma,
+  MovementType,
+  User,
+  PersonalCategory,
+  PersonalAttachment,
+} from '@prisma/client';
 import prisma from '../client';
 
 export type PersonalMovementWithRelations = PersonalMovement & {

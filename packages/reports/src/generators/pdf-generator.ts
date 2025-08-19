@@ -1,12 +1,12 @@
 import PDFDocument from 'pdfkit';
-import { MovementWithRelations } from '@financial-bot/database';
+import { MovementWithRelations, PersonalMovementWithRelations } from '@financial-bot/database';
 import { formatCurrency, formatDate } from '@financial-bot/shared';
 import { MovementFilters } from '../filters/movement-filters';
 
 export interface PDFReportOptions {
   companyName: string;
   filters: MovementFilters;
-  movements: MovementWithRelations[];
+  movements: (MovementWithRelations | PersonalMovementWithRelations)[];
   includeDetails?: boolean;
   groupByCategory?: boolean;
 }
@@ -104,7 +104,7 @@ export class PDFReportGenerator {
     this.currentY += 20;
   }
 
-  private addSummary(movements: MovementWithRelations[]) {
+  private addSummary(movements: (MovementWithRelations | PersonalMovementWithRelations)[]) {
     // Título de la sección
     this.doc
       .font('Helvetica-Bold')
@@ -133,7 +133,7 @@ export class PDFReportGenerator {
     this.currentY += 30;
   }
 
-  private addCategorySummary(movements: MovementWithRelations[]) {
+  private addCategorySummary(movements: (MovementWithRelations | PersonalMovementWithRelations)[]) {
     if (this.currentY > 700) {
       this.doc.addPage();
       this.currentY = this.pageMargin;
@@ -180,7 +180,7 @@ export class PDFReportGenerator {
     this.currentY += 30;
   }
 
-  private addMovementDetails(movements: MovementWithRelations[]) {
+  private addMovementDetails(movements: (MovementWithRelations | PersonalMovementWithRelations)[]) {
     if (this.currentY > 600) {
       this.doc.addPage();
       this.currentY = this.pageMargin;
@@ -315,8 +315,8 @@ export class PDFReportGenerator {
   }
 
   private groupByCategory(
-    movements: MovementWithRelations[],
-  ): Record<string, MovementWithRelations[]> {
+    movements: (MovementWithRelations | PersonalMovementWithRelations)[],
+  ): Record<string, (MovementWithRelations | PersonalMovementWithRelations)[]> {
     return movements.reduce(
       (groups, movement) => {
         const categoryName = movement.category?.name || 'Sin categoría';
@@ -326,7 +326,7 @@ export class PDFReportGenerator {
         groups[categoryName].push(movement);
         return groups;
       },
-      {} as Record<string, MovementWithRelations[]>,
+      {} as Record<string, (MovementWithRelations | PersonalMovementWithRelations)[]>,
     );
   }
 }

@@ -1,17 +1,17 @@
-import { 
-  movementRepository, 
+import {
+  movementRepository,
   personalMovementRepository,
-  categoryRepository,
-  userRepository,
-  MovementWithRelations
+  MovementWithRelations,
+  PersonalMovementWithRelations,
+  MovementType,
 } from '@financial-bot/database';
-import { 
-  MovementFilterBuilder, 
+import {
+  MovementFilterBuilder,
   MovementFilters,
   ExcelReportGenerator,
   PDFReportGenerator,
   ExcelReportOptions,
-  PDFReportOptions
+  PDFReportOptions,
 } from '@financial-bot/reports';
 import { InlineKeyboard } from 'grammy';
 
@@ -34,7 +34,6 @@ export interface ReportSummary {
 }
 
 export class ReportsService {
-  
   /**
    * Crear filtros por defecto
    */
@@ -42,7 +41,7 @@ export class ReportsService {
     return {
       period: 'month',
       type: 'ALL',
-      scope: 'ALL'
+      scope: 'ALL',
     };
   }
 
@@ -53,12 +52,11 @@ export class ReportsService {
     companyId: string,
     userId: string,
     userRole: 'ADMIN' | 'OPERATOR',
-    filters: ReportFilters
+    filters: ReportFilters,
   ): Promise<ReportSummary> {
-    
     // Usar el MovementFilterBuilder existente
     const filterBuilder = new MovementFilterBuilder(companyId);
-    
+
     // Aplicar filtros de fecha según período
     switch (filters.period) {
       case 'today':
@@ -71,31 +69,31 @@ export class ReportsService {
         filterBuilder.thisMonth();
         break;
     }
-    
+
     // Aplicar otros filtros
     if (filters.categoryId) {
       filterBuilder.byCategory(filters.categoryId);
     }
-    
+
     if (filters.userId) {
       filterBuilder.byUser(filters.userId);
     }
-    
+
     if (filters.type !== 'ALL') {
-      filterBuilder.byType(filters.type as any);
+      filterBuilder.byType(filters.type as MovementType);
     }
-    
+
     const dbFilters = filterBuilder.build();
-    
+
     // Obtener movimientos según el role y scope
-    let allMovements: any[] = [];
-    
+    let allMovements: (MovementWithRelations | PersonalMovementWithRelations)[] = [];
+
     if (userRole === 'ADMIN') {
       if (filters.scope === 'COMPANY' || filters.scope === 'ALL') {
         const companyMovements = await movementRepository.findMany(dbFilters);
         allMovements = [...allMovements, ...companyMovements];
       }
-      
+
       if (filters.scope === 'PERSONAL' || filters.scope === 'ALL') {
         // Para movimientos personales, usar los filtros adaptados
         const personalFilters = {
@@ -104,7 +102,10 @@ export class ReportsService {
           type: dbFilters.type,
           categoryId: dbFilters.categoryId,
         };
-        const personalMovements = await personalMovementRepository.findByUser(userId, personalFilters);
+        const personalMovements = await personalMovementRepository.findByUser(
+          userId,
+          personalFilters,
+        );
         allMovements = [...allMovements, ...personalMovements];
       }
     } else {
@@ -115,14 +116,17 @@ export class ReportsService {
         type: dbFilters.type,
         categoryId: dbFilters.categoryId,
       };
-      const personalMovements = await personalMovementRepository.findByUser(userId, personalFilters);
+      const personalMovements = await personalMovementRepository.findByUser(
+        userId,
+        personalFilters,
+      );
       allMovements = personalMovements;
     }
 
     // Calcular totales
     const expenses = allMovements.filter(m => m.type === 'EXPENSE');
     const incomes = allMovements.filter(m => m.type === 'INCOME');
-    
+
     const totalExpenses = expenses.reduce((sum, m) => sum + Number(m.amount), 0);
     const totalIncomes = incomes.reduce((sum, m) => sum + Number(m.amount), 0);
     const balance = totalIncomes - totalExpenses;
@@ -132,18 +136,14 @@ export class ReportsService {
       totalExpenses,
       totalIncomes,
       balance,
-      appliedFilters: filters
+      appliedFilters: filters,
     };
   }
-
 
   /**
    * Crear teclado del panel de reportes
    */
-  createReportsKeyboard(
-    filters: ReportFilters,
-    userRole: 'ADMIN' | 'OPERATOR'
-  ): InlineKeyboard {
+  createReportsKeyboard(filters: ReportFilters, userRole: 'ADMIN' | 'OPERATOR'): InlineKeyboard {
     const keyboard = new InlineKeyboard();
 
     // Fila 1: Período
@@ -153,9 +153,8 @@ export class ReportsService {
       .row();
 
     // Fila 2: Categoría
-    keyboard
-      .text(`📁 ${filters.categoryName || 'Todas'}`, 'reports_filter_category');
-    
+    keyboard.text(`📁 ${filters.categoryName || 'Todas'}`, 'reports_filter_category');
+
     if (userRole === 'ADMIN') {
       keyboard.text(`👤 ${filters.userName || 'Todos'}`, 'reports_filter_user');
     }
@@ -163,15 +162,11 @@ export class ReportsService {
 
     // Fila 3: Scope (solo para admins)
     if (userRole === 'ADMIN') {
-      keyboard
-        .text(`🏢 ${this.getScopeLabel(filters.scope)}`, 'reports_filter_scope')
-        .row();
+      keyboard.text(`🏢 ${this.getScopeLabel(filters.scope)}`, 'reports_filter_scope').row();
     }
 
     // Fila 4: Generar reporte completo
-    keyboard
-      .text('📊 Generar Reporte de Movimientos', 'reports_generate')
-      .row();
+    keyboard.text('📊 Generar Reporte de Movimientos', 'reports_generate').row();
 
     // Fila 5: Limpiar filtros y volver
     keyboard
@@ -185,7 +180,9 @@ export class ReportsService {
   /**
    * Crear teclado de selección de categorías
    */
-  createCategorySelectionKeyboard(categories: any[]): InlineKeyboard {
+  createCategorySelectionKeyboard(
+    categories: Array<{ id: string; name: string; icon?: string }>,
+  ): InlineKeyboard {
     const keyboard = new InlineKeyboard();
 
     // Opción "Todas las categorías"
@@ -195,7 +192,7 @@ export class ReportsService {
     categories.slice(0, 8).forEach((category, index) => {
       const icon = category.icon || '📁';
       keyboard.text(`${icon} ${category.name}`, `reports_category_${category.id}`);
-      
+
       if ((index + 1) % 2 === 0) {
         keyboard.row();
       }
@@ -214,7 +211,9 @@ export class ReportsService {
   /**
    * Crear teclado de selección de usuarios
    */
-  createUserSelectionKeyboard(users: any[]): InlineKeyboard {
+  createUserSelectionKeyboard(
+    users: Array<{ id: string; firstName: string; lastName?: string }>,
+  ): InlineKeyboard {
     const keyboard = new InlineKeyboard();
 
     // Opción "Todos los usuarios"
@@ -224,7 +223,7 @@ export class ReportsService {
     users.slice(0, 8).forEach((user, index) => {
       const userName = `${user.firstName} ${user.lastName || ''}`.trim();
       keyboard.text(`👤 ${userName}`, `reports_user_${user.id}`);
-      
+
       if ((index + 1) % 2 === 0) {
         keyboard.row();
       }
@@ -247,10 +246,10 @@ export class ReportsService {
     summary: ReportSummary,
     companyName: string,
     userRole: 'ADMIN' | 'OPERATOR',
-    userName: string
+    userName: string,
   ): string {
     let message = `📊 **Panel de Reportes - ${companyName}**\n\n`;
-    
+
     if (userRole === 'ADMIN') {
       message += `👑 **Admin:** ${userName}\n\n`;
     } else {
@@ -260,21 +259,21 @@ export class ReportsService {
     // Filtros aplicados
     message += `🔍 **Filtros Aplicados:**\n`;
     message += `📅 Período: ${this.getPeriodLabel(summary.appliedFilters.period)}\n`;
-    
+
     if (summary.appliedFilters.categoryName) {
       message += `📁 Categoría: ${summary.appliedFilters.categoryName}\n`;
     }
-    
+
     if (summary.appliedFilters.userName) {
       message += `👤 Usuario: ${summary.appliedFilters.userName}\n`;
     }
-    
+
     message += `💰 Tipo: ${this.getTypeLabel(summary.appliedFilters.type)}\n`;
-    
+
     if (userRole === 'ADMIN') {
       message += `🏢 Alcance: ${this.getScopeLabel(summary.appliedFilters.scope)}\n`;
     }
-    
+
     message += `\n📈 **Resumen:**\n`;
     message += `• Total movimientos: ${summary.totalMovements.toLocaleString('es-MX')}\n`;
     message += `• Gastos: $${summary.totalExpenses.toLocaleString('es-MX', { minimumFractionDigits: 2 })}\n`;
@@ -296,11 +295,11 @@ export class ReportsService {
     companyId: string,
     userId: string,
     userRole: 'ADMIN' | 'OPERATOR',
-    filters: ReportFilters
-  ): Promise<MovementWithRelations[]> {
+    filters: ReportFilters,
+  ): Promise<(MovementWithRelations | PersonalMovementWithRelations)[]> {
     // Usar el MovementFilterBuilder existente
     const filterBuilder = new MovementFilterBuilder(companyId);
-    
+
     // Aplicar filtros de fecha según período
     switch (filters.period) {
       case 'today':
@@ -313,31 +312,31 @@ export class ReportsService {
         filterBuilder.thisMonth();
         break;
     }
-    
+
     // Aplicar otros filtros
     if (filters.categoryId) {
       filterBuilder.byCategory(filters.categoryId);
     }
-    
+
     if (filters.userId) {
       filterBuilder.byUser(filters.userId);
     }
-    
+
     if (filters.type !== 'ALL') {
-      filterBuilder.byType(filters.type as any);
+      filterBuilder.byType(filters.type as MovementType);
     }
-    
+
     const dbFilters = filterBuilder.build();
-    
+
     // Obtener movimientos según el role y scope
-    let allMovements: any[] = [];
-    
+    let allMovements: (MovementWithRelations | PersonalMovementWithRelations)[] = [];
+
     if (userRole === 'ADMIN') {
       if (filters.scope === 'COMPANY' || filters.scope === 'ALL') {
         const companyMovements = await movementRepository.findMany(dbFilters);
         allMovements = [...allMovements, ...companyMovements];
       }
-      
+
       if (filters.scope === 'PERSONAL' || filters.scope === 'ALL') {
         // Para movimientos personales, usar los filtros adaptados
         const personalFilters = {
@@ -346,7 +345,10 @@ export class ReportsService {
           type: dbFilters.type,
           categoryId: dbFilters.categoryId,
         };
-        const personalMovements = await personalMovementRepository.findByUser(userId, personalFilters);
+        const personalMovements = await personalMovementRepository.findByUser(
+          userId,
+          personalFilters,
+        );
         allMovements = [...allMovements, ...personalMovements];
       }
     } else {
@@ -357,7 +359,10 @@ export class ReportsService {
         type: dbFilters.type,
         categoryId: dbFilters.categoryId,
       };
-      const personalMovements = await personalMovementRepository.findByUser(userId, personalFilters);
+      const personalMovements = await personalMovementRepository.findByUser(
+        userId,
+        personalFilters,
+      );
       allMovements = personalMovements;
     }
 
@@ -372,14 +377,14 @@ export class ReportsService {
    */
   async generateExcelReport(
     companyName: string,
-    movements: MovementWithRelations[],
-    filters: MovementFilters
+    movements: (MovementWithRelations | PersonalMovementWithRelations)[],
+    filters: MovementFilters,
   ): Promise<Buffer> {
     const generator = new ExcelReportGenerator();
-    
+
     const options: ExcelReportOptions = {
       companyName,
-      movements,
+      movements: movements as ExcelReportOptions['movements'],
       filters,
       includeCharts: true,
       groupByCategory: true,
@@ -393,14 +398,14 @@ export class ReportsService {
    */
   async generatePDFReport(
     companyName: string,
-    movements: MovementWithRelations[],
-    filters: MovementFilters
+    movements: (MovementWithRelations | PersonalMovementWithRelations)[],
+    filters: MovementFilters,
   ): Promise<Buffer> {
     const generator = new PDFReportGenerator();
-    
+
     const options: PDFReportOptions = {
       companyName,
-      movements,
+      movements: movements as PDFReportOptions['movements'],
       filters,
       includeDetails: true,
       groupByCategory: true,
@@ -412,29 +417,42 @@ export class ReportsService {
   // Métodos de utilidad para labels
   private getPeriodLabel(period: string): string {
     switch (period) {
-      case 'today': return 'Hoy';
-      case 'week': return 'Esta Semana';
-      case 'month': return 'Este Mes';
-      case 'custom': return 'Personalizado';
-      default: return 'Este Mes';
+      case 'today':
+        return 'Hoy';
+      case 'week':
+        return 'Esta Semana';
+      case 'month':
+        return 'Este Mes';
+      case 'custom':
+        return 'Personalizado';
+      default:
+        return 'Este Mes';
     }
   }
 
   private getTypeLabel(type: string): string {
     switch (type) {
-      case 'EXPENSE': return 'Solo Gastos';
-      case 'INCOME': return 'Solo Ingresos';
-      case 'ALL': return 'Gastos e Ingresos';
-      default: return 'Gastos e Ingresos';
+      case 'EXPENSE':
+        return 'Solo Gastos';
+      case 'INCOME':
+        return 'Solo Ingresos';
+      case 'ALL':
+        return 'Gastos e Ingresos';
+      default:
+        return 'Gastos e Ingresos';
     }
   }
 
   private getScopeLabel(scope: string): string {
     switch (scope) {
-      case 'COMPANY': return 'Solo Empresariales';
-      case 'PERSONAL': return 'Solo Personales';
-      case 'ALL': return 'Empresariales y Personales';
-      default: return 'Empresariales y Personales';
+      case 'COMPANY':
+        return 'Solo Empresariales';
+      case 'PERSONAL':
+        return 'Solo Personales';
+      case 'ALL':
+        return 'Empresariales y Personales';
+      default:
+        return 'Empresariales y Personales';
     }
   }
 }

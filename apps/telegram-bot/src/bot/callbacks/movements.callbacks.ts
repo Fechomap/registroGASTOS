@@ -1,14 +1,14 @@
 import { CallbackQueryContext } from 'grammy';
 import { MyContext } from '../../types';
 import { MovementsService } from '../../services/movements.service';
-import { MovementFilterBuilder } from '@financial-bot/reports';
-import { 
-  movementRepository, 
+import {
+  movementRepository,
   personalMovementRepository,
   categoryRepository,
   personalCategoryRepository,
   userRepository,
-  MovementWithRelations
+  MovementWithRelations,
+  PersonalMovementWithRelations,
 } from '@financial-bot/database';
 import { logBotError } from '../../utils/logger';
 
@@ -27,12 +27,10 @@ export async function handleShowMovements(ctx: CallbackQueryContext<MyContext>) 
 
   try {
     // Obtener resumen de movimientos
-    const summary = await movementsService.getMovements(
-      user.companyId,
-      user.id,
-      user.role,
-      { page: 1, limit: 10 }
-    );
+    const summary = await movementsService.getMovements(user.companyId, user.id, user.role, {
+      page: 1,
+      limit: 10,
+    });
 
     // Crear teclado interactivo
     const keyboard = movementsService.createMovementsKeyboard(summary, user.role);
@@ -42,7 +40,7 @@ export async function handleShowMovements(ctx: CallbackQueryContext<MyContext>) 
       summary,
       user.company.name,
       user.role,
-      user.firstName
+      user.firstName,
     );
 
     await ctx.editMessageText(message, {
@@ -68,23 +66,22 @@ export async function handleMovementsPage(ctx: CallbackQueryContext<MyContext>) 
 
   try {
     const page = parseInt(data.replace('movements_page_', ''));
-    
+
     // Obtener filtros de la sesión si existen
     const filters = ctx.session.movementFilters || { companyId: user.companyId };
 
-    const summary = await movementsService.getMovements(
-      user.companyId,
-      user.id,
-      user.role,
-      { page, limit: 10, filters }
-    );
+    const summary = await movementsService.getMovements(user.companyId, user.id, user.role, {
+      page,
+      limit: 10,
+      filters,
+    });
 
     const keyboard = movementsService.createMovementsKeyboard(summary, user.role, filters);
     const message = movementsService.formatMovementMessage(
       summary,
       user.company.name,
       user.role,
-      user.firstName
+      user.firstName,
     );
 
     await ctx.editMessageText(message, {
@@ -104,9 +101,8 @@ export async function handleMovementsPage(ctx: CallbackQueryContext<MyContext>) 
  */
 export async function handleDateFilter(ctx: CallbackQueryContext<MyContext>) {
   const keyboard = movementsService.createDateFilterKeyboard();
-  
-  const message = `📅 **Filtrar por Fecha**\n\n` +
-    `Selecciona el período que deseas consultar:`;
+
+  const message = `📅 **Filtrar por Fecha**\n\n` + `Selecciona el período que deseas consultar:`;
 
   await ctx.editMessageText(message, {
     reply_markup: keyboard,
@@ -146,24 +142,23 @@ export async function handleDateFilterApply(ctx: CallbackQueryContext<MyContext>
     }
 
     const filters = filterBuilder.build();
-    
+
     // Guardar filtros en la sesión
     ctx.session.movementFilters = filters;
 
     // Obtener movimientos con filtros
-    const summary = await movementsService.getMovements(
-      user.companyId,
-      user.id,
-      user.role,
-      { page: 1, limit: 10, filters }
-    );
+    const summary = await movementsService.getMovements(user.companyId, user.id, user.role, {
+      page: 1,
+      limit: 10,
+      filters,
+    });
 
     const keyboard = movementsService.createMovementsKeyboard(summary, user.role, filters);
     const message = movementsService.formatMovementMessage(
       summary,
       user.company.name,
       user.role,
-      user.firstName
+      user.firstName,
     );
 
     await ctx.editMessageText(message, {
@@ -201,28 +196,29 @@ export async function handleCategoryFilter(ctx: CallbackQueryContext<MyContext>)
     // Agregar categorías empresariales
     if (companyCategories.length > 0) {
       companyCategories.slice(0, 10).forEach(category => {
-        keyboard.text(
-          `🏢 ${category.icon || '📁'} ${category.name}`,
-          `movements_category_${category.id}`
-        ).row();
+        keyboard
+          .text(`🏢 ${category.icon || '📁'} ${category.name}`, `movements_category_${category.id}`)
+          .row();
       });
     }
 
     // Agregar categorías personales
     if (personalCategories.length > 0 && user.role === 'OPERATOR') {
       personalCategories.slice(0, 5).forEach(category => {
-        keyboard.text(
-          `👤 ${category.icon || '📁'} ${category.name}`,
-          `movements_personal_category_${category.id}`
-        ).row();
+        keyboard
+          .text(
+            `👤 ${category.icon || '📁'} ${category.name}`,
+            `movements_personal_category_${category.id}`,
+          )
+          .row();
       });
     }
 
     keyboard.text('📊 Todas las categorías', 'movements_category_all').row();
     keyboard.text('◀️ Volver', 'main_movements');
 
-    const message = `📁 **Filtrar por Categoría**\n\n` +
-      `Selecciona la categoría que deseas consultar:`;
+    const message =
+      `📁 **Filtrar por Categoría**\n\n` + `Selecciona la categoría que deseas consultar:`;
 
     await ctx.editMessageText(message, {
       reply_markup: keyboard,
@@ -252,31 +248,34 @@ export async function handleCategoryFilterApply(ctx: CallbackQueryContext<MyCont
       // Remover filtro de categoría
       delete ctx.session.movementFilters?.categoryId;
     } else {
-      const categoryId = data.replace('movements_category_', '').replace('movements_personal_category_', '');
+      const categoryId = data
+        .replace('movements_category_', '')
+        .replace('movements_personal_category_', '');
       filterBuilder.byCategory(categoryId);
     }
 
     const filters = ctx.session.movementFilters || filterBuilder.build();
     if (data !== 'movements_category_all') {
-      const categoryId = data.replace('movements_category_', '').replace('movements_personal_category_', '');
+      const categoryId = data
+        .replace('movements_category_', '')
+        .replace('movements_personal_category_', '');
       filters.categoryId = categoryId;
     }
 
     ctx.session.movementFilters = filters;
 
-    const summary = await movementsService.getMovements(
-      user.companyId,
-      user.id,
-      user.role,
-      { page: 1, limit: 10, filters }
-    );
+    const summary = await movementsService.getMovements(user.companyId, user.id, user.role, {
+      page: 1,
+      limit: 10,
+      filters,
+    });
 
     const keyboard = movementsService.createMovementsKeyboard(summary, user.role, filters);
     const message = movementsService.formatMovementMessage(
       summary,
       user.company.name,
       user.role,
-      user.firstName
+      user.firstName,
     );
 
     await ctx.editMessageText(message, {
@@ -313,17 +312,19 @@ export async function handleUserFilter(ctx: CallbackQueryContext<MyContext>) {
     const keyboard = new (await import('grammy')).InlineKeyboard();
 
     users.slice(0, 10).forEach(companyUser => {
-      keyboard.text(
-        `👤 ${companyUser.firstName} ${companyUser.lastName || ''}`,
-        `movements_user_${companyUser.id}`
-      ).row();
+      keyboard
+        .text(
+          `👤 ${companyUser.firstName} ${companyUser.lastName || ''}`,
+          `movements_user_${companyUser.id}`,
+        )
+        .row();
     });
 
     keyboard.text('👥 Todos los usuarios', 'movements_user_all').row();
     keyboard.text('◀️ Volver', 'main_movements');
 
-    const message = `👤 **Filtrar por Usuario**\n\n` +
-      `Selecciona el usuario que deseas consultar:`;
+    const message =
+      `👤 **Filtrar por Usuario**\n\n` + `Selecciona el usuario que deseas consultar:`;
 
     await ctx.editMessageText(message, {
       reply_markup: keyboard,
@@ -356,15 +357,18 @@ export async function handleExportExcel(ctx: CallbackQueryContext<MyContext>) {
     const excelBuffer = await movementsService.generateExcelReport(
       user.company.name,
       allMovements,
-      filters
+      filters,
     );
 
     // Enviar archivo
-    await ctx.api.sendDocument(ctx.chat!.id, new (await import('grammy')).InputFile(excelBuffer, 'movimientos.xlsx'), {
-      caption: `📊 **Reporte de Movimientos**\n\nEmpresa: ${user.company.name}\nMovimientos: ${allMovements.length}\nGenerado: ${new Date().toLocaleDateString('es-MX')}`,
-      parse_mode: 'Markdown'
-    });
-
+    await ctx.api.sendDocument(
+      ctx.chat!.id,
+      new (await import('grammy')).InputFile(excelBuffer, 'movimientos.xlsx'),
+      {
+        caption: `📊 **Reporte de Movimientos**\n\nEmpresa: ${user.company.name}\nMovimientos: ${allMovements.length}\nGenerado: ${new Date().toLocaleDateString('es-MX')}`,
+        parse_mode: 'Markdown',
+      },
+    );
   } catch (error) {
     logBotError(error as Error, { command: 'export_excel' });
     await ctx.api.sendMessage(ctx.chat!.id, '❌ Error al generar reporte Excel');
@@ -390,15 +394,18 @@ export async function handleExportPDF(ctx: CallbackQueryContext<MyContext>) {
     const pdfBuffer = await movementsService.generatePDFReport(
       user.company.name,
       allMovements,
-      filters
+      filters,
     );
 
     // Enviar archivo
-    await ctx.api.sendDocument(ctx.chat!.id, new (await import('grammy')).InputFile(pdfBuffer, 'movimientos.pdf'), {
-      caption: `📄 **Reporte de Movimientos**\n\nEmpresa: ${user.company.name}\nMovimientos: ${allMovements.length}\nGenerado: ${new Date().toLocaleDateString('es-MX')}`,
-      parse_mode: 'Markdown'
-    });
-
+    await ctx.api.sendDocument(
+      ctx.chat!.id,
+      new (await import('grammy')).InputFile(pdfBuffer, 'movimientos.pdf'),
+      {
+        caption: `📄 **Reporte de Movimientos**\n\nEmpresa: ${user.company.name}\nMovimientos: ${allMovements.length}\nGenerado: ${new Date().toLocaleDateString('es-MX')}`,
+        parse_mode: 'Markdown',
+      },
+    );
   } catch (error) {
     logBotError(error as Error, { command: 'export_pdf' });
     await ctx.api.sendMessage(ctx.chat!.id, '❌ Error al generar reporte PDF');
@@ -416,9 +423,10 @@ export async function handleMovementDetail(ctx: CallbackQueryContext<MyContext>)
 
   try {
     const movementId = data.replace('movement_detail_', '');
-    
+
     // Buscar el movimiento (empresarial o personal)
-    let movement: MovementWithRelations | any = await movementRepository.findById(movementId);
+    let movement: MovementWithRelations | PersonalMovementWithRelations | null =
+      await movementRepository.findById(movementId);
     let isPersonal = false;
 
     if (!movement && user.role === 'OPERATOR') {
@@ -464,7 +472,7 @@ export async function handleMovementDetail(ctx: CallbackQueryContext<MyContext>)
 
     // Crear teclado de acciones
     const keyboard = new (await import('grammy')).InlineKeyboard();
-    
+
     if (user.role === 'ADMIN' || isPersonal) {
       keyboard
         .text('✏️ Editar', `movement_edit_${movementId}`)
@@ -500,7 +508,7 @@ export async function handleClearFilters(ctx: CallbackQueryContext<MyContext>) {
 
     // Recargar movimientos sin filtros
     await handleShowMovements(ctx);
-    
+
     await ctx.answerCallbackQuery('✅ Filtros limpiados');
   } catch (error) {
     logBotError(error as Error, { command: 'clear_filters' });

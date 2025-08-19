@@ -159,6 +159,9 @@ importers:
 
   packages/reports:
     dependencies:
+      '@financial-bot/database':
+        specifier: workspace:*
+        version: link:../database
       '@financial-bot/shared':
         specifier: workspace:*
         version: link:../shared

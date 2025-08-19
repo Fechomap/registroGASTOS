@@ -14,17 +14,11 @@ export function createMainMenu(userRole: 'ADMIN' | 'OPERATOR') {
 
   // Opciones adicionales para administradores
   if (userRole === 'ADMIN') {
-    keyboard
-      .text('👥 Usuarios', 'main_users')
-      .text('📁 Categorías', 'main_categories')
-      .row();
+    keyboard.text('👥 Usuarios', 'main_users').text('📁 Categorías', 'main_categories').row();
   }
 
   // Opciones para todos
-  keyboard
-    .text('⚙️ Mi Cuenta', 'main_profile')
-    .text('🔄 Actualizar', 'main_refresh')
-    .row();
+  keyboard.text('⚙️ Mi Cuenta', 'main_profile').text('🔄 Actualizar', 'main_refresh').row();
 
   return keyboard;
 }

@@ -1,11 +1,7 @@
 import { CallbackQueryContext } from 'grammy';
 import { MyContext } from '../../types';
 import { logBotError } from '../../utils/logger';
-import {
-  createUsersMenu,
-  createCategoriesMenu,
-  createProfileMenu,
-} from '../menus/main.menu';
+import { createUsersMenu, createCategoriesMenu, createProfileMenu } from '../menus/main.menu';
 import {
   handleMainExpenseCallback,
   handleExpenseStartCallback,
@@ -27,9 +23,7 @@ import {
   handleCompanyConfirmRegister,
   handleCompanySkipPhone,
 } from '../handlers/company-setup.handler';
-import {
-  handleShowReportsPanel,
-} from './reports.callbacks';
+import { handleShowReportsPanel } from './reports.callbacks';
 import {
   handleUsersList,
   handleUsersAdd,
@@ -41,10 +35,7 @@ import {
   handleUserDeleteFinal,
   handleUsersRoles,
 } from './users.callbacks';
-import {
-  handleCategoriesList,
-  handleCategoriesAdd,
-} from './categories.callbacks';
+import { handleCategoriesList, handleCategoriesAdd } from './categories.callbacks';
 
 /**
  * Handler principal para todos los callbacks del menú
@@ -141,28 +132,27 @@ export async function handleMenuCallback(ctx: CallbackQueryContext<MyContext>) {
         break;
 
       default:
-
         // Manejar callbacks de usuarios específicos
         if (data?.startsWith('user_manage_')) {
           await handleUserManage(ctx);
           return;
         }
-        
+
         if (data?.startsWith('user_change_role_')) {
           await handleUserChangeRole(ctx);
           return;
         }
-        
+
         if (data?.startsWith('user_role_confirm_')) {
           await handleUserRoleConfirm(ctx);
           return;
         }
-        
+
         if (data?.startsWith('user_delete_confirm_')) {
           await handleUserDeleteConfirm(ctx);
           return;
         }
-        
+
         if (data?.startsWith('user_delete_final_')) {
           await handleUserDeleteFinal(ctx);
           return;
@@ -194,20 +184,20 @@ export async function handleMenuCallback(ctx: CallbackQueryContext<MyContext>) {
   }
 }
 
-
 /**
  * Mostrar Mi Cuenta (perfil + configuración + ayuda)
  */
 async function showProfile(ctx: CallbackQueryContext<MyContext>) {
   const user = ctx.session.user;
-  
+
   if (!user) {
     await ctx.answerCallbackQuery('❌ Error de autenticación');
     return;
   }
 
   const keyboard = createProfileMenu();
-  const message = `⚙️ **Mi Cuenta**\n\n` + 
+  const message =
+    `⚙️ **Mi Cuenta**\n\n` +
     `👤 **Usuario:** ${user.firstName} ${user.lastName || ''}\n` +
     `👔 **Rol:** ${user.role === 'ADMIN' ? 'Administrador' : 'Operador'}\n` +
     `🏢 **Empresa:** ${user.company.name}\n\n` +
@@ -220,20 +210,20 @@ async function showProfile(ctx: CallbackQueryContext<MyContext>) {
   await ctx.answerCallbackQuery();
 }
 
-
 /**
  * Mostrar menú de usuarios
  */
 async function showUsersMenu(ctx: CallbackQueryContext<MyContext>) {
   const user = ctx.session.user;
-  
+
   if (!user || user.role !== 'ADMIN') {
     await ctx.answerCallbackQuery('❌ Solo admins pueden gestionar usuarios');
     return;
   }
 
   const keyboard = createUsersMenu();
-  const message = `👥 **Gestión de Usuarios**\n\n` + 
+  const message =
+    `👥 **Gestión de Usuarios**\n\n` +
     `🏢 **Empresa:** ${user.company.name}\n\n` +
     `Administra los usuarios de tu empresa:`;
 
@@ -249,14 +239,15 @@ async function showUsersMenu(ctx: CallbackQueryContext<MyContext>) {
  */
 async function showCategoriesMenu(ctx: CallbackQueryContext<MyContext>) {
   const user = ctx.session.user;
-  
+
   if (!user || user.role !== 'ADMIN') {
     await ctx.answerCallbackQuery('❌ Solo admins pueden gestionar categorías');
     return;
   }
 
   const keyboard = createCategoriesMenu();
-  const message = `📁 **Gestión de Categorías**\n\n` + 
+  const message =
+    `📁 **Gestión de Categorías**\n\n` +
     `🏢 **Empresa:** ${user.company.name}\n\n` +
     `Gestiona las categorías de gastos e ingresos:`;
 

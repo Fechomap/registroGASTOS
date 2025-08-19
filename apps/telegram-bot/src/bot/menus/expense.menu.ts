@@ -147,7 +147,7 @@ export function getExpenseSummaryMessage(expense: Expense) {
  */
 export function getExpenseTypeMessage(companies?: Array<{ id: string; name: string }>) {
   let message = `💰 **Registrar Nuevo Gasto**\n\n`;
-  
+
   if (companies && companies.length > 0) {
     if (companies.length === 1) {
       message += `¿Dónde deseas registrar el gasto?\n\n`;
@@ -164,7 +164,7 @@ export function getExpenseTypeMessage(companies?: Array<{ id: string; name: stri
     message += `🏢 **Empresa:** Gasto empresarial visible para administradores\n`;
     message += `👤 **Personal:** Gasto privado solo visible para ti`;
   }
-  
+
   return message;
 }
 
