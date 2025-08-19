@@ -8,7 +8,6 @@ import { incomeCommand } from './income.command';
 import { movementsCommand } from './movements.command';
 import { companyCommand } from './company.command';
 import { userCommands } from './user.commands';
-import { reportCommand } from './report.command';
 import { editCommand } from './edit.command';
 import { deleteCommand } from './delete.command';
 import { categoriesCommand } from './categories.command';
@@ -44,6 +43,18 @@ import {
   handleCategoryCancel,
   handleCategoryBack,
 } from '../callbacks/categories.callbacks';
+import {
+  handleShowReportsPanel,
+  handlePeriodFilter,
+  handleTypeFilter,
+  handleScopeFilter,
+  handleCategoryFilter,
+  handleCategorySelection,
+  handleUserFilter,
+  handleUserSelection,
+  handleClearFilters,
+  handleGenerateReports,
+} from '../callbacks/reports.callbacks';
 
 /**
  * Configurar todos los comandos del bot
@@ -133,9 +144,36 @@ export function setupCommands(bot: Bot<MyContext>) {
     await handleAssignCategory(ctx);
   });
 
+  // Callbacks para reportes
+  bot.callbackQuery(/^reports_/, async ctx => {
+    const data = ctx.callbackQuery.data;
+
+    if (data === 'reports_show_panel') {
+      await handleShowReportsPanel(ctx);
+    } else if (data === 'reports_filter_period') {
+      await handlePeriodFilter(ctx);
+    } else if (data === 'reports_filter_type') {
+      await handleTypeFilter(ctx);
+    } else if (data === 'reports_filter_scope') {
+      await handleScopeFilter(ctx);
+    } else if (data === 'reports_filter_category') {
+      await handleCategoryFilter(ctx);
+    } else if (data?.startsWith('reports_category_')) {
+      await handleCategorySelection(ctx);
+    } else if (data === 'reports_filter_user') {
+      await handleUserFilter(ctx);
+    } else if (data?.startsWith('reports_user_')) {
+      await handleUserSelection(ctx);
+    } else if (data === 'reports_clear_filters') {
+      await handleClearFilters(ctx);
+    } else if (data === 'reports_generate') {
+      await handleGenerateReports(ctx);
+    }
+  });
+
   // Callbacks para menús principales
   bot.callbackQuery(
-    /^main_|^admin_|^users_|^reports_|^profile_|^expense_|^category_select_|^date_select_|^photo_skip$|^date_back_to_options$/,
+    /^main_|^admin_|^users_|^categories_|^movements_|^movement_|^user_|^category_manage_|^profile_|^expense_|^category_select_|^date_select_|^photo_skip$|^date_back_to_options$/,
     async ctx => {
       await handleMenuCallback(ctx);
     },
@@ -188,9 +226,6 @@ export function setupCommands(bot: Bot<MyContext>) {
   bot.command('categorias', categoriesCommand);
   bot.command('categories', categoriesCommand); // Alias en inglés
 
-  // Comandos de reportes
-  bot.command('reporte', reportCommand);
-  bot.command('report', reportCommand); // Alias en inglés
 
   // Manejar mensajes de texto que no son comandos
   bot.on('message:text', async ctx => {

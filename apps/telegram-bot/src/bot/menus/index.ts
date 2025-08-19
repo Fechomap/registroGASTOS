@@ -6,9 +6,7 @@
 export {
   createMainMenu,
   getMainMenuMessage,
-  createAdminMenu,
   createUsersMenu,
-  createReportsMenu,
   createProfileMenu,
 } from './main.menu';
 

@@ -1,14 +1,37 @@
 import { InlineKeyboard } from 'grammy';
 
 /**
- * Menú para seleccionar tipo de gasto (Empresa/Personal)
+ * Menú para seleccionar tipo de gasto (Empresa/Personal) con nombres reales
  */
-export function createExpenseTypeMenu() {
-  return new InlineKeyboard()
-    .text('🏢 Empresa', 'expense_type_company')
-    .text('👤 Personal', 'expense_type_personal')
-    .row()
-    .text('◀️ Cancelar', 'main_menu');
+export function createExpenseTypeMenu(companies?: Array<{ id: string; name: string }>) {
+  const keyboard = new InlineKeyboard();
+
+  // Si hay empresas, mostrar cada empresa específica
+  if (companies && companies.length > 0) {
+    // Si solo hay una empresa, mostrarla directamente
+    if (companies.length === 1) {
+      keyboard
+        .text(`🏢 ${companies[0].name}`, `expense_company_${companies[0].id}`)
+        .text('👤 Gastos Personales', 'expense_type_personal')
+        .row();
+    } else {
+      // Si hay múltiples empresas, mostrar menú de selección
+      keyboard
+        .text('🏢 Gastos Empresariales', 'expense_type_company')
+        .text('👤 Gastos Personales', 'expense_type_personal')
+        .row();
+    }
+  } else {
+    // Fallback al menú original si no hay datos de empresa
+    keyboard
+      .text('🏢 Empresa', 'expense_type_company')
+      .text('👤 Personal', 'expense_type_personal')
+      .row();
+  }
+
+  keyboard.text('◀️ Cancelar', 'main_menu');
+
+  return keyboard;
 }
 
 /**
@@ -120,15 +143,29 @@ export function getExpenseSummaryMessage(expense: Expense) {
 }
 
 /**
- * Mensaje para selección de tipo de gasto
+ * Mensaje para selección de tipo de gasto con nombres reales
  */
-export function getExpenseTypeMessage() {
-  return (
-    `💰 **Registrar Nuevo Gasto**\n\n` +
-    `¿Dónde deseas registrar el gasto?\n\n` +
-    `🏢 **Empresa:** Gasto empresarial visible para administradores\n` +
-    `👤 **Personal:** Gasto privado solo visible para ti`
-  );
+export function getExpenseTypeMessage(companies?: Array<{ id: string; name: string }>) {
+  let message = `💰 **Registrar Nuevo Gasto**\n\n`;
+  
+  if (companies && companies.length > 0) {
+    if (companies.length === 1) {
+      message += `¿Dónde deseas registrar el gasto?\n\n`;
+      message += `🏢 **${companies[0].name}:** Gasto empresarial visible para administradores\n`;
+      message += `👤 **Gastos Personales:** Gasto privado solo visible para ti`;
+    } else {
+      message += `¿Dónde deseas registrar el gasto?\n\n`;
+      message += `🏢 **Gastos Empresariales:** Gasto visible para administradores\n`;
+      message += `   📊 Empresas disponibles: ${companies.map(c => c.name).join(', ')}\n`;
+      message += `👤 **Gastos Personales:** Gasto privado solo visible para ti`;
+    }
+  } else {
+    message += `¿Dónde deseas registrar el gasto?\n\n`;
+    message += `🏢 **Empresa:** Gasto empresarial visible para administradores\n`;
+    message += `👤 **Personal:** Gasto privado solo visible para ti`;
+  }
+  
+  return message;
 }
 
 /**

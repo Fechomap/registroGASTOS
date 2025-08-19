@@ -142,17 +142,39 @@ export async function startExpenseFlow(ctx: Context & MyContext) {
     }
   }
 
-  // Para administradores, mostrar opciones de tipo de gasto
-  const registerFlow: RegisterFlowData = {
-    step: 'expense_type',
-  };
+  // Para administradores, obtener empresas disponibles y mostrar opciones
+  try {
+    const userCompanies = await userRepository.getUserCompanies(user.id);
+    const companies = userCompanies.map(uc => ({
+      id: uc.company.id,
+      name: uc.company.name
+    }));
 
-  ctx.session.conversationData = { registerFlow };
+    const registerFlow: RegisterFlowData = {
+      step: 'expense_type',
+    };
 
-  await ctx.reply(getExpenseTypeMessage(), {
-    reply_markup: createExpenseTypeMenu(),
-    parse_mode: 'Markdown',
-  });
+    ctx.session.conversationData = { registerFlow };
+
+    await ctx.reply(getExpenseTypeMessage(companies), {
+      reply_markup: createExpenseTypeMenu(companies),
+      parse_mode: 'Markdown',
+    });
+  } catch (error) {
+    console.error('Error getting user companies for admin:', error);
+    
+    // Fallback al menú sin nombres de empresa
+    const registerFlow: RegisterFlowData = {
+      step: 'expense_type',
+    };
+
+    ctx.session.conversationData = { registerFlow };
+
+    await ctx.reply(getExpenseTypeMessage(), {
+      reply_markup: createExpenseTypeMenu(),
+      parse_mode: 'Markdown',
+    });
+  }
 }
 
 /**

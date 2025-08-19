@@ -1,11 +1,153 @@
 import { CallbackQueryContext } from 'grammy';
 import { MyContext, CategoryManagementData } from '../../types';
-import { categoryRepository } from '@financial-bot/database';
+import { 
+  categoryRepository, 
+  Category
+} from '@financial-bot/database';
+import { logBotError } from '../../utils/logger';
+import { InlineKeyboard } from 'grammy';
 
 /**
- * Manejadores de callbacks para gestión de categorías
+ * Listar categorías de la empresa
  */
+export async function handleCategoriesList(ctx: CallbackQueryContext<MyContext>) {
+  const user = ctx.session.user;
 
+  if (!user || user.role !== 'ADMIN') {
+    await ctx.answerCallbackQuery('❌ Solo admins pueden gestionar categorías');
+    return;
+  }
+
+  try {
+    const categories = await categoryRepository.findByCompany(user.companyId);
+
+    let message = `📁 **Categorías de la Empresa**\n\n`;
+    message += `🏢 **Empresa:** ${user.company.name}\n`;
+    message += `📊 **Total categorías:** ${categories.length}\n\n`;
+
+    if (categories.length === 0) {
+      message += `📋 No hay categorías creadas.\n\n`;
+      message += `Las categorías ayudan a organizar gastos e ingresos.\n`;
+      message += `Crea tu primera categoría para empezar.`;
+
+      const keyboard = new InlineKeyboard()
+        .text('➕ Nueva Categoría', 'categories_add')
+        .row()
+        .text('◀️ Volver', 'main_categories');
+
+      await ctx.editMessageText(message, {
+        reply_markup: keyboard,
+        parse_mode: 'Markdown',
+      });
+      
+      await ctx.answerCallbackQuery();
+      return;
+    }
+
+    // Agrupar por categorías padre e hijas
+    const parentCategories = categories.filter(c => !c.parentId);
+    const childCategories = categories.filter(c => c.parentId);
+
+    parentCategories.forEach((parent, index) => {
+      message += `${index + 1}. ${parent.icon || '📁'} **${parent.name}**\n`;
+      if (parent.color) {
+        message += `   🎨 Color: ${parent.color}\n`;
+      }
+      
+      // Buscar subcategorías
+      const children = childCategories.filter(child => child.parentId === parent.id);
+      if (children.length > 0) {
+        children.forEach(child => {
+          message += `   └─ ${child.icon || '📄'} ${child.name}\n`;
+        });
+      }
+      message += '\n';
+    });
+
+    // Crear teclado con acciones
+    const keyboard = new InlineKeyboard();
+    
+    // Botones para categorías (primeras 8)
+    categories.slice(0, 8).forEach((category, index) => {
+      const shortName = category.name.length > 12 
+        ? category.name.substring(0, 9) + '...' 
+        : category.name;
+      
+      keyboard.text(`${category.icon || '📁'} ${shortName}`, `category_manage_${category.id}`);
+      
+      if ((index + 1) % 2 === 0) {
+        keyboard.row();
+      }
+    });
+
+    if (categories.length % 2 !== 0) {
+      keyboard.row();
+    }
+
+    keyboard
+      .text('➕ Nueva Categoría', 'categories_add')
+      .text('🗑️ Eliminar Categoría', 'categories_delete')
+      .row()
+      .text('◀️ Volver', 'main_categories');
+
+    await ctx.editMessageText(message, {
+      reply_markup: keyboard,
+      parse_mode: 'Markdown',
+    });
+
+    await ctx.answerCallbackQuery();
+  } catch (error) {
+    logBotError(error as Error, { command: 'categories_list' });
+    await ctx.answerCallbackQuery('❌ Error al cargar categorías');
+  }
+}
+
+/**
+ * Agregar nueva categoría
+ */
+export async function handleCategoriesAdd(ctx: CallbackQueryContext<MyContext>) {
+  const user = ctx.session.user;
+
+  if (!user || user.role !== 'ADMIN') {
+    await ctx.answerCallbackQuery('❌ Solo admins pueden agregar categorías');
+    return;
+  }
+
+  const message = `➕ **Crear Nueva Categoría**\n\n` +
+    `🏢 **Empresa:** ${user.company.name}\n\n` +
+    `Para crear una categoría, usa el comando:\n` +
+    `\`/categoria_agregar [nombre] [icono] [color]\`\n\n` +
+    `📝 **Ejemplos:**\n` +
+    `\`/categoria_agregar Alimentación 🍽️ #FF6B6B\`\n` +
+    `\`/categoria_agregar Transporte 🚗\`\n` +
+    `\`/categoria_agregar Oficina 🏢 #45B7D1\`\n\n` +
+    `📋 **Parámetros:**\n` +
+    `• **Nombre:** Requerido (ej: Alimentación)\n` +
+    `• **Icono:** Opcional (ej: 🍽️)\n` +
+    `• **Color:** Opcional (ej: #FF6B6B)\n\n` +
+    `💡 **Consejos:**\n` +
+    `• Usa nombres descriptivos y únicos\n` +
+    `• Los iconos ayudan a identificar rápidamente\n` +
+    `• Los colores organizan visualmente`;
+
+  const keyboard = new InlineKeyboard()
+    .text('🎨 Plantillas Sugeridas', 'categories_templates')
+    .row()
+    .text('📋 Ver Categorías', 'categories_list')
+    .text('◀️ Volver', 'main_categories')
+    .row();
+
+  await ctx.editMessageText(message, {
+    reply_markup: keyboard,
+    parse_mode: 'Markdown',
+  });
+
+  await ctx.answerCallbackQuery();
+}
+
+/**
+ * Manejadores de callbacks para gestión de categorías (legacy)
+ */
 export async function handleCategoryAction(ctx: CallbackQueryContext<MyContext>) {
   if (!ctx.session.user || !ctx.callbackQuery.data) return;
 

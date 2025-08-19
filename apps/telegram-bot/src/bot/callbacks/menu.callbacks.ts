@@ -2,9 +2,8 @@ import { CallbackQueryContext } from 'grammy';
 import { MyContext } from '../../types';
 import { logBotError } from '../../utils/logger';
 import {
-  createAdminMenu,
   createUsersMenu,
-  createReportsMenu,
+  createCategoriesMenu,
   createProfileMenu,
 } from '../menus/main.menu';
 import {
@@ -28,6 +27,24 @@ import {
   handleCompanyConfirmRegister,
   handleCompanySkipPhone,
 } from '../handlers/company-setup.handler';
+import {
+  handleShowReportsPanel,
+} from './reports.callbacks';
+import {
+  handleUsersList,
+  handleUsersAdd,
+  handleUsersHelpChatId,
+  handleUserManage,
+  handleUserChangeRole,
+  handleUserRoleConfirm,
+  handleUserDeleteConfirm,
+  handleUserDeleteFinal,
+  handleUsersRoles,
+} from './users.callbacks';
+import {
+  handleCategoriesList,
+  handleCategoriesAdd,
+} from './categories.callbacks';
 
 /**
  * Handler principal para todos los callbacks del menú
@@ -44,19 +61,10 @@ export async function handleMenuCallback(ctx: CallbackQueryContext<MyContext>) {
         await handleMainExpenseCallback(ctx);
         break;
       case 'main_movements':
-        await showMovements(ctx);
+        await handleShowReportsPanel(ctx);
         break;
       case 'main_profile':
         await showProfile(ctx);
-        break;
-      case 'main_help':
-        await showHelp(ctx);
-        break;
-      case 'main_admin':
-        await showAdminMenu(ctx);
-        break;
-      case 'main_reports':
-        await showReportsMenu(ctx);
         break;
       case 'main_users':
         await showUsersMenu(ctx);
@@ -110,8 +118,57 @@ export async function handleMenuCallback(ctx: CallbackQueryContext<MyContext>) {
         await handleCompanySkipPhone(ctx);
         break;
 
+      // Callbacks de gestión de usuarios
+      case 'users_list':
+        await handleUsersList(ctx);
+        break;
+      case 'users_add':
+        await handleUsersAdd(ctx);
+        break;
+      case 'users_help_chatid':
+        await handleUsersHelpChatId(ctx);
+        break;
+      case 'users_roles':
+        await handleUsersRoles(ctx);
+        break;
+
+      // Callbacks de gestión de categorías
+      case 'categories_list':
+        await handleCategoriesList(ctx);
+        break;
+      case 'categories_add':
+        await handleCategoriesAdd(ctx);
+        break;
+
       default:
-        // Manejar selección de categorías
+
+        // Manejar callbacks de usuarios específicos
+        if (data?.startsWith('user_manage_')) {
+          await handleUserManage(ctx);
+          return;
+        }
+        
+        if (data?.startsWith('user_change_role_')) {
+          await handleUserChangeRole(ctx);
+          return;
+        }
+        
+        if (data?.startsWith('user_role_confirm_')) {
+          await handleUserRoleConfirm(ctx);
+          return;
+        }
+        
+        if (data?.startsWith('user_delete_confirm_')) {
+          await handleUserDeleteConfirm(ctx);
+          return;
+        }
+        
+        if (data?.startsWith('user_delete_final_')) {
+          await handleUserDeleteFinal(ctx);
+          return;
+        }
+
+        // Manejar selección de categorías (expense flow)
         if (data?.startsWith('category_select_')) {
           await handleCategorySelectCallback(ctx);
           return;
@@ -137,32 +194,24 @@ export async function handleMenuCallback(ctx: CallbackQueryContext<MyContext>) {
   }
 }
 
-/**
- * Mostrar movimientos del usuario
- */
-async function showMovements(ctx: CallbackQueryContext<MyContext>) {
-  // TODO: Implementar vista de movimientos
-  await ctx.answerCallbackQuery('🚧 Función en desarrollo');
-
-  const message =
-    `📊 **Mis Movimientos**\n\n` +
-    `🚧 Esta función está en desarrollo.\n` +
-    `Próximamente podrás ver todos tus movimientos aquí.`;
-
-  await ctx.editMessageText(message, {
-    reply_markup: {
-      inline_keyboard: [[{ text: '◀️ Menú Principal', callback_data: 'main_menu' }]],
-    },
-    parse_mode: 'Markdown',
-  });
-}
 
 /**
- * Mostrar perfil del usuario
+ * Mostrar Mi Cuenta (perfil + configuración + ayuda)
  */
 async function showProfile(ctx: CallbackQueryContext<MyContext>) {
+  const user = ctx.session.user;
+  
+  if (!user) {
+    await ctx.answerCallbackQuery('❌ Error de autenticación');
+    return;
+  }
+
   const keyboard = createProfileMenu();
-  const message = `👤 **Mi Perfil**\n\n` + `Gestiona tu información personal y configuración:`;
+  const message = `⚙️ **Mi Cuenta**\n\n` + 
+    `👤 **Usuario:** ${user.firstName} ${user.lastName || ''}\n` +
+    `👔 **Rol:** ${user.role === 'ADMIN' ? 'Administrador' : 'Operador'}\n` +
+    `🏢 **Empresa:** ${user.company.name}\n\n` +
+    `Gestiona tu información personal, configuración y obtén ayuda:`;
 
   await ctx.editMessageText(message, {
     reply_markup: keyboard,
@@ -171,65 +220,22 @@ async function showProfile(ctx: CallbackQueryContext<MyContext>) {
   await ctx.answerCallbackQuery();
 }
 
-/**
- * Mostrar ayuda
- */
-async function showHelp(ctx: CallbackQueryContext<MyContext>) {
-  const message =
-    `❓ **Ayuda del Financial Bot**\n\n` +
-    `**Comandos principales:**\n` +
-    `• \`/menu\` - Menú principal\n` +
-    `• \`/gasto [monto] [descripción]\` - Registro rápido\n` +
-    `• \`/movimientos\` - Ver movimientos\n` +
-    `• \`/perfil\` - Ver perfil\n\n` +
-    `**Navegación:**\n` +
-    `Usa los botones del menú para navegar fácilmente.\n\n` +
-    `**Soporte:**\n` +
-    `Contacta a tu administrador para ayuda adicional.`;
-
-  await ctx.editMessageText(message, {
-    reply_markup: {
-      inline_keyboard: [[{ text: '◀️ Menú Principal', callback_data: 'main_menu' }]],
-    },
-    parse_mode: 'Markdown',
-  });
-  await ctx.answerCallbackQuery();
-}
-
-/**
- * Mostrar menú de administración
- */
-async function showAdminMenu(ctx: CallbackQueryContext<MyContext>) {
-  const keyboard = createAdminMenu();
-  const message = `⚙️ **Panel de Administración**\n\n` + `Gestiona tu empresa y usuarios:`;
-
-  await ctx.editMessageText(message, {
-    reply_markup: keyboard,
-    parse_mode: 'Markdown',
-  });
-  await ctx.answerCallbackQuery();
-}
-
-/**
- * Mostrar menú de reportes
- */
-async function showReportsMenu(ctx: CallbackQueryContext<MyContext>) {
-  const keyboard = createReportsMenu();
-  const message = `📈 **Generar Reportes**\n\n` + `Selecciona el tipo de reporte que necesitas:`;
-
-  await ctx.editMessageText(message, {
-    reply_markup: keyboard,
-    parse_mode: 'Markdown',
-  });
-  await ctx.answerCallbackQuery();
-}
 
 /**
  * Mostrar menú de usuarios
  */
 async function showUsersMenu(ctx: CallbackQueryContext<MyContext>) {
+  const user = ctx.session.user;
+  
+  if (!user || user.role !== 'ADMIN') {
+    await ctx.answerCallbackQuery('❌ Solo admins pueden gestionar usuarios');
+    return;
+  }
+
   const keyboard = createUsersMenu();
-  const message = `👥 **Gestión de Usuarios**\n\n` + `Administra los usuarios de tu empresa:`;
+  const message = `👥 **Gestión de Usuarios**\n\n` + 
+    `🏢 **Empresa:** ${user.company.name}\n\n` +
+    `Administra los usuarios de tu empresa:`;
 
   await ctx.editMessageText(message, {
     reply_markup: keyboard,
@@ -242,18 +248,21 @@ async function showUsersMenu(ctx: CallbackQueryContext<MyContext>) {
  * Mostrar menú de categorías
  */
 async function showCategoriesMenu(ctx: CallbackQueryContext<MyContext>) {
-  // TODO: Implementar menú de categorías
-  await ctx.answerCallbackQuery('🚧 Función en desarrollo');
+  const user = ctx.session.user;
+  
+  if (!user || user.role !== 'ADMIN') {
+    await ctx.answerCallbackQuery('❌ Solo admins pueden gestionar categorías');
+    return;
+  }
 
-  const message =
-    `📋 **Gestión de Categorías**\n\n` +
-    `🚧 Esta función está en desarrollo.\n` +
-    `Próximamente podrás gestionar categorías aquí.`;
+  const keyboard = createCategoriesMenu();
+  const message = `📁 **Gestión de Categorías**\n\n` + 
+    `🏢 **Empresa:** ${user.company.name}\n\n` +
+    `Gestiona las categorías de gastos e ingresos:`;
 
   await ctx.editMessageText(message, {
-    reply_markup: {
-      inline_keyboard: [[{ text: '◀️ Menú Principal', callback_data: 'main_menu' }]],
-    },
+    reply_markup: keyboard,
     parse_mode: 'Markdown',
   });
+  await ctx.answerCallbackQuery();
 }

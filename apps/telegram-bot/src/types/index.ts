@@ -2,10 +2,14 @@ import { Context, SessionFlavor } from 'grammy';
 import { ConversationFlavor } from '@grammyjs/conversations';
 import { HydrateFlavor } from '@grammyjs/hydrate';
 import { User, Company, UserWithCompany } from '@financial-bot/database';
+import { MovementFilters } from '@financial-bot/reports';
+import { ReportFilters } from '../services/reports.service';
 
 // Datos de sesión
 export interface SessionData {
   user?: UserWithCompany;
+  movementFilters?: MovementFilters;
+  reportFilters?: ReportFilters;
   conversationData?: {
     registerFlow?: RegisterFlowData;
     companyRegistration?: CompanyRegistrationData;

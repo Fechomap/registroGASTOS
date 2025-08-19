@@ -1,5 +1,11 @@
-import { PersonalMovement, Prisma, MovementType } from '@prisma/client';
+import { PersonalMovement, Prisma, MovementType, User, PersonalCategory, PersonalAttachment } from '@prisma/client';
 import prisma from '../client';
+
+export type PersonalMovementWithRelations = PersonalMovement & {
+  category: PersonalCategory | null;
+  user: User;
+  attachments: PersonalAttachment[];
+};
 
 export class PersonalMovementRepository {
   async create(data: Prisma.PersonalMovementCreateInput): Promise<PersonalMovement> {
@@ -11,11 +17,12 @@ export class PersonalMovementRepository {
     });
   }
 
-  async findById(id: string): Promise<PersonalMovement | null> {
+  async findById(id: string): Promise<PersonalMovementWithRelations | null> {
     return prisma.personalMovement.findUnique({
       where: { id },
       include: {
         category: true,
+        user: true,
         attachments: true,
       },
     });
@@ -31,7 +38,7 @@ export class PersonalMovementRepository {
       limit?: number;
       offset?: number;
     },
-  ): Promise<PersonalMovement[]> {
+  ): Promise<PersonalMovementWithRelations[]> {
     const where: Prisma.PersonalMovementWhereInput = {
       userId,
     };
@@ -58,6 +65,8 @@ export class PersonalMovementRepository {
       where,
       include: {
         category: true,
+        user: true,
+        attachments: true,
       },
       orderBy: { date: 'desc' },
       take: options?.limit,
