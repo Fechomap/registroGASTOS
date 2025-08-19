@@ -169,47 +169,47 @@ export class MovementsUIService {
     const keyboard = new InlineKeyboard();
 
     // Sección de período
-    const periodLabel = this.getFilterButtonLabel('period', currentFilters.period?.label);
-    keyboard.text(`📅 ${periodLabel}`, 'movements_filter_period').row();
+    const periodIcon = currentFilters.period ? '✅' : '⭕';
+    const periodText = currentFilters.period ? currentFilters.period.label : 'Sin filtrar';
+    keyboard.text(`${periodIcon} 📅 Período - ${periodText}`, 'movements_period_select').row();
 
     // Sección de tipo
-    const typeLabel = this.getFilterButtonLabel(
-      'type',
-      this.getTypeFilterLabel(currentFilters.type),
-    );
-    keyboard.text(`💰 ${typeLabel}`, 'movements_filter_type').row();
+    const typeIcon = currentFilters.type ? '✅' : '⭕';
+    const typeText = this.getTypeFilterLabel(currentFilters.type);
+    keyboard.text(`${typeIcon} 💰 Tipo - ${typeText}`, 'movements_type_select').row();
 
     // Sección de categorías
-    const categoriesLabel = this.getFilterButtonLabel(
-      'categories',
-      this.getCategoriesFilterLabel(currentFilters.categories),
-    );
-    keyboard.text(`📁 ${categoriesLabel}`, 'movements_filter_categories').row();
+    const categoriesIcon =
+      currentFilters.categories && currentFilters.categories.length > 0 ? '✅' : '⭕';
+    const categoriesText = this.getCategoriesFilterLabel(currentFilters.categories);
+    keyboard
+      .text(`${categoriesIcon} 📁 Categorías - ${categoriesText}`, 'movements_categories_select')
+      .row();
 
     // Sección de alcance (solo para admins)
     if (userRole === 'ADMIN') {
-      const scopeLabel = this.getFilterButtonLabel(
-        'scope',
-        this.getScopeFilterLabel(currentFilters.scope),
-      );
-      keyboard.text(`🏢 ${scopeLabel}`, 'movements_filter_scope').row();
+      const scopeIcon = currentFilters.scope ? '✅' : '⭕';
+      const scopeText = this.getScopeFilterLabel(currentFilters.scope);
+      keyboard.text(`${scopeIcon} 🏢 Alcance - ${scopeText}`, 'movements_scope_select').row();
 
       // Sección de empresas (si hay múltiples)
       if (availableCompanies && availableCompanies.length > 1) {
-        const companiesLabel = this.getFilterButtonLabel(
-          'companies',
-          this.getCompaniesFilterLabel(currentFilters.companies),
-        );
-        keyboard.text(`🏭 ${companiesLabel}`, 'movements_filter_companies').row();
+        const companiesIcon =
+          currentFilters.companies && currentFilters.companies.length > 0 ? '✅' : '⭕';
+        const companiesText = this.getCompaniesFilterLabel(currentFilters.companies);
+        keyboard
+          .text(`${companiesIcon} 🏭 Empresas - ${companiesText}`, 'movements_companies_select')
+          .row();
       }
     }
 
     // Botones de acción
-    keyboard
-      .text('✅ Aplicar Filtros', 'movements_apply_filters')
-      .text('🔄 Limpiar Todo', 'movements_clear_all_filters')
-      .row()
-      .text('◀️ Ver Movimientos', 'main_movements');
+    const stats = this.getFilterStats(currentFilters);
+    if (stats.totalFiltersActive > 0) {
+      keyboard.text('🔄 Limpiar Todo', 'movements_clear_all_filters').row();
+    }
+
+    keyboard.text('◀️ Ver Movimientos', 'main_movements');
 
     return keyboard;
   }
@@ -464,34 +464,34 @@ export class MovementsUIService {
   /**
    * Obtener etiqueta para filtro de tipo
    */
-  private getTypeFilterLabel(type?: string): string | undefined {
-    if (!type || type === 'all') return undefined;
+  private getTypeFilterLabel(type?: string): string {
+    if (!type || type === 'all') return 'Sin filtrar';
     const config = this.typeConfigs.find(c => c.type === type);
-    return config?.label;
+    return config?.label || 'Sin filtrar';
   }
 
   /**
    * Obtener etiqueta para filtro de categorías
    */
-  private getCategoriesFilterLabel(categories?: string[]): string | undefined {
-    if (!categories || categories.length === 0) return undefined;
+  private getCategoriesFilterLabel(categories?: string[]): string {
+    if (!categories || categories.length === 0) return 'Sin filtrar';
     return `${categories.length} seleccionada${categories.length > 1 ? 's' : ''}`;
   }
 
   /**
    * Obtener etiqueta para filtro de alcance
    */
-  private getScopeFilterLabel(scope?: string): string | undefined {
-    if (!scope || scope === 'all') return undefined;
+  private getScopeFilterLabel(scope?: string): string {
+    if (!scope || scope === 'all') return 'Sin filtrar';
     const config = this.scopeConfigs.find(c => c.type === scope);
-    return config?.label;
+    return config?.label || 'Sin filtrar';
   }
 
   /**
    * Obtener etiqueta para filtro de empresas
    */
-  private getCompaniesFilterLabel(companies?: string[]): string | undefined {
-    if (!companies || companies.length === 0) return undefined;
+  private getCompaniesFilterLabel(companies?: string[]): string {
+    if (!companies || companies.length === 0) return 'Sin filtrar';
     return `${companies.length} seleccionada${companies.length > 1 ? 's' : ''}`;
   }
 

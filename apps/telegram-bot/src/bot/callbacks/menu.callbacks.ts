@@ -27,13 +27,16 @@ import {
 import {
   handleShowMovements,
   handleShowFiltersMain,
-  handleShowPeriodFilter,
+  handlePeriodSelect,
   handleApplyPeriodFilter,
-  handleShowTypeFilter,
+  handleTypeSelect,
   handleApplyTypeFilter,
-  handleShowCategoriesFilter,
+  handleCategoriesSelect,
   handleToggleCategory,
-  handleShowScopeFilter,
+  handleToggleAllCategories,
+  handleApplyCategoriesFilter,
+  handleClearCategoriesFilter,
+  handleScopeSelect,
   handleApplyScopeFilter,
   handleApplyFilters,
   handleClearAllFilters,
@@ -199,8 +202,8 @@ export async function handleMenuCallback(ctx: CallbackQueryContext<MyContext>) {
           return;
         }
 
-        if (data?.startsWith('movements_filter_period')) {
-          await handleShowPeriodFilter(ctx);
+        if (data?.startsWith('movements_period_select')) {
+          await handlePeriodSelect(ctx);
           return;
         }
 
@@ -209,8 +212,8 @@ export async function handleMenuCallback(ctx: CallbackQueryContext<MyContext>) {
           return;
         }
 
-        if (data?.startsWith('movements_filter_type')) {
-          await handleShowTypeFilter(ctx);
+        if (data?.startsWith('movements_type_select')) {
+          await handleTypeSelect(ctx);
           return;
         }
 
@@ -219,8 +222,8 @@ export async function handleMenuCallback(ctx: CallbackQueryContext<MyContext>) {
           return;
         }
 
-        if (data?.startsWith('movements_filter_categories')) {
-          await handleShowCategoriesFilter(ctx);
+        if (data?.startsWith('movements_categories_select')) {
+          await handleCategoriesSelect(ctx);
           return;
         }
 
@@ -229,8 +232,23 @@ export async function handleMenuCallback(ctx: CallbackQueryContext<MyContext>) {
           return;
         }
 
-        if (data?.startsWith('movements_filter_scope')) {
-          await handleShowScopeFilter(ctx);
+        if (data?.startsWith('movements_categories_toggle_all')) {
+          await handleToggleAllCategories(ctx);
+          return;
+        }
+
+        if (data?.startsWith('movements_categories_apply')) {
+          await handleApplyCategoriesFilter(ctx);
+          return;
+        }
+
+        if (data?.startsWith('movements_categories_clear')) {
+          await handleClearCategoriesFilter(ctx);
+          return;
+        }
+
+        if (data?.startsWith('movements_scope_select')) {
+          await handleScopeSelect(ctx);
           return;
         }
 

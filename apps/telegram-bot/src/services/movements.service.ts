@@ -338,12 +338,6 @@ export class MovementsService {
     message += `• Ingresos: $${summary.totalIncomes.toLocaleString('es-MX', { minimumFractionDigits: 2 })}\n`;
     message += `• Balance: $${summary.balance.toLocaleString('es-MX', { minimumFractionDigits: 2 })}\n\n`;
 
-    message += `💡 **Acciones disponibles:**\n`;
-    message += `• 🔍 Usa filtros para refinar la búsqueda\n`;
-    message += `• 📊 Genera reporte completo con los filtros aplicados\n`;
-    message += `• 🔄 Limpia filtros para ver todos los movimientos\n`;
-    message += `• 📥 Descarga reportes detallados en Excel o PDF`;
-
     return message;
   }
 }

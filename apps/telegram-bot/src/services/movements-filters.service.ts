@@ -25,7 +25,15 @@ export class MovementsFiltersService {
    */
   createInitialFilterState(): MovementFilterState {
     return {
-      isActive: false,
+      isActive: true,
+      type: 'all',
+      scope: 'all',
+      // Inicializar con período por defecto (mes actual)
+      period: {
+        type: 'month',
+        label: 'Este Mes',
+        ...this.getMonthDateRange(),
+      },
     };
   }
 
