@@ -4,11 +4,14 @@ import { HydrateFlavor } from '@grammyjs/hydrate';
 import { User, Company, UserWithCompany } from '@financial-bot/database';
 import { MovementFilters } from '@financial-bot/reports';
 import { ReportFilters } from '../services/reports.service';
+import { MovementFilterState, FilterNavigationContext } from './filter.types';
 
 // Datos de sesión
 export interface SessionData {
   user?: UserWithCompany;
   movementFilters?: MovementFilters;
+  movementFilterState?: MovementFilterState;
+  filterNavigation?: FilterNavigationContext;
   reportFilters?: ReportFilters;
   conversationData?: {
     registerFlow?: RegisterFlowData;
@@ -152,3 +155,4 @@ export interface CompanyModeData {
 }
 
 export { User, Company };
+export * from './filter.types';

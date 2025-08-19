@@ -23,7 +23,24 @@ import {
   handleCompanyConfirmRegister,
   handleCompanySkipPhone,
 } from '../handlers/company-setup.handler';
-import { handleShowReportsPanel } from './reports.callbacks';
+// import { handleShowReportsPanel } from './reports.callbacks';
+import {
+  handleShowMovements,
+  handleShowFiltersMain,
+  handleShowPeriodFilter,
+  handleApplyPeriodFilter,
+  handleShowTypeFilter,
+  handleApplyTypeFilter,
+  handleShowCategoriesFilter,
+  handleToggleCategory,
+  handleShowScopeFilter,
+  handleApplyScopeFilter,
+  handleApplyFilters,
+  handleClearAllFilters,
+  handleGenerateReport,
+  handleMovementDetail,
+  // handleMovementsPage, // Ya no se usa - removido el resumen de movimientos
+} from './movements.callbacks';
 import {
   handleUsersList,
   handleUsersAdd,
@@ -52,7 +69,7 @@ export async function handleMenuCallback(ctx: CallbackQueryContext<MyContext>) {
         await handleMainExpenseCallback(ctx);
         break;
       case 'main_movements':
-        await handleShowReportsPanel(ctx);
+        await handleShowMovements(ctx);
         break;
       case 'main_profile':
         await showProfile(ctx);
@@ -175,6 +192,77 @@ export async function handleMenuCallback(ctx: CallbackQueryContext<MyContext>) {
           await handleDateSelectCallback(ctx);
           return;
         }
+
+        // Manejar callbacks de filtros de movimientos
+        if (data?.startsWith('movements_filters_main')) {
+          await handleShowFiltersMain(ctx);
+          return;
+        }
+
+        if (data?.startsWith('movements_filter_period')) {
+          await handleShowPeriodFilter(ctx);
+          return;
+        }
+
+        if (data?.startsWith('movements_period_')) {
+          await handleApplyPeriodFilter(ctx);
+          return;
+        }
+
+        if (data?.startsWith('movements_filter_type')) {
+          await handleShowTypeFilter(ctx);
+          return;
+        }
+
+        if (data?.startsWith('movements_type_')) {
+          await handleApplyTypeFilter(ctx);
+          return;
+        }
+
+        if (data?.startsWith('movements_filter_categories')) {
+          await handleShowCategoriesFilter(ctx);
+          return;
+        }
+
+        if (data?.startsWith('movements_category_toggle_')) {
+          await handleToggleCategory(ctx);
+          return;
+        }
+
+        if (data?.startsWith('movements_filter_scope')) {
+          await handleShowScopeFilter(ctx);
+          return;
+        }
+
+        if (data?.startsWith('movements_scope_')) {
+          await handleApplyScopeFilter(ctx);
+          return;
+        }
+
+        if (data?.startsWith('movements_apply_filters')) {
+          await handleApplyFilters(ctx);
+          return;
+        }
+
+        if (
+          data?.startsWith('movements_clear_filters') ||
+          data?.startsWith('movements_clear_all_filters')
+        ) {
+          await handleClearAllFilters(ctx);
+          return;
+        }
+
+        if (data?.startsWith('movements_generate_report')) {
+          await handleGenerateReport(ctx);
+          return;
+        }
+
+        if (data?.startsWith('movement_detail_')) {
+          await handleMovementDetail(ctx);
+          return;
+        }
+
+        // Paginación removida - ya no mostramos movimientos individuales
 
         await ctx.answerCallbackQuery('Opción no reconocida');
     }

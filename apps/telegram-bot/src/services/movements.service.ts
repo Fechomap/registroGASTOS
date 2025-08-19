@@ -14,6 +14,7 @@ import {
   PDFReportOptions,
 } from '@financial-bot/reports';
 import { InlineKeyboard } from 'grammy';
+import { MovementFilterState } from '../types/filter.types';
 
 export interface MovementViewOptions {
   page?: number;
@@ -119,7 +120,7 @@ export class MovementsService {
   }
 
   createMovementsKeyboard(
-    summary: MovementSummary,
+    _summary: MovementSummary,
     userRole: 'ADMIN' | 'OPERATOR',
     _currentFilters?: MovementFilters,
   ): InlineKeyboard {
@@ -147,33 +148,7 @@ export class MovementsService {
       .text('📄 Exportar PDF', 'movements_export_pdf')
       .row();
 
-    // Paginación
-    if (summary.pagination.hasPrev) {
-      keyboard.text('⬅️ Anterior', `movements_page_${summary.pagination.page - 1}`);
-    }
-
-    if (summary.pagination.hasNext) {
-      keyboard.text('➡️ Siguiente', `movements_page_${summary.pagination.page + 1}`);
-    }
-
-    if (summary.pagination.hasPrev || summary.pagination.hasNext) {
-      keyboard.row();
-    }
-
-    // Botones de acción para movimientos individuales (primeros 5)
-    summary.movements.slice(0, 5).forEach((movement, _index) => {
-      const movementId = movement.id;
-      const shortDescription =
-        movement.description.length > 20
-          ? movement.description.substring(0, 17) + '...'
-          : movement.description;
-
-      keyboard.text(`📝 ${shortDescription}`, `movement_detail_${movementId}`);
-
-      if ((_index + 1) % 2 === 0) {
-        keyboard.row();
-      }
-    });
+    // Ya no mostramos movimientos individuales ni paginación
 
     // Botón volver al menú
     keyboard.row().text('◀️ Menú Principal', 'main_menu');
@@ -307,5 +282,68 @@ export class MovementsService {
       .text('📊 Ambos', 'movements_type_all')
       .row()
       .text('◀️ Volver', 'main_movements');
+  }
+
+  /**
+   * Formatear mensaje de movimientos con indicadores de filtros
+   */
+  formatMovementMessageWithFilters(
+    summary: MovementSummary,
+    companyName: string,
+    userRole: 'ADMIN' | 'OPERATOR',
+    userName: string,
+    filterState?: MovementFilterState,
+  ): string {
+    let message = `📊 **Ver Movimientos - ${companyName}**\n\n`;
+
+    if (userRole === 'ADMIN') {
+      message += `👑 **Admin:** ${userName}\n`;
+    } else {
+      message += `👤 **Usuario:** ${userName}\n`;
+    }
+
+    // Mostrar filtros activos si existen
+    if (filterState?.isActive) {
+      message += `🔍 **Filtros activos:**\n`;
+
+      if (filterState.period) {
+        message += `• 📅 ${filterState.period.label}\n`;
+      }
+
+      if (filterState.type && filterState.type !== 'all') {
+        const typeLabel = filterState.type === 'expense' ? 'Solo Gastos' : 'Solo Ingresos';
+        message += `• 💰 ${typeLabel}\n`;
+      }
+
+      if (filterState.categories && filterState.categories.length > 0) {
+        message += `• 📁 ${filterState.categories.length} categoría${filterState.categories.length > 1 ? 's' : ''}\n`;
+      }
+
+      if (filterState.scope && filterState.scope !== 'all') {
+        const scopeLabel =
+          filterState.scope === 'company' ? 'Solo Empresariales' : 'Solo Personales';
+        message += `• 🏢 ${scopeLabel}\n`;
+      }
+
+      if (filterState.companies && filterState.companies.length > 0) {
+        message += `• 🏭 ${filterState.companies.length} empresa${filterState.companies.length > 1 ? 's' : ''}\n`;
+      }
+
+      message += '\n';
+    }
+
+    message += `📈 **Resumen:**\n`;
+    message += `• Total movimientos: ${summary.totalMovements}\n`;
+    message += `• Gastos: $${summary.totalExpenses.toLocaleString('es-MX', { minimumFractionDigits: 2 })}\n`;
+    message += `• Ingresos: $${summary.totalIncomes.toLocaleString('es-MX', { minimumFractionDigits: 2 })}\n`;
+    message += `• Balance: $${summary.balance.toLocaleString('es-MX', { minimumFractionDigits: 2 })}\n\n`;
+
+    message += `💡 **Acciones disponibles:**\n`;
+    message += `• 🔍 Usa filtros para refinar la búsqueda\n`;
+    message += `• 📊 Genera reporte completo con los filtros aplicados\n`;
+    message += `• 🔄 Limpia filtros para ver todos los movimientos\n`;
+    message += `• 📥 Descarga reportes detallados en Excel o PDF`;
+
+    return message;
   }
 }
