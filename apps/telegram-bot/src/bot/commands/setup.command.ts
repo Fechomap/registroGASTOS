@@ -1,11 +1,6 @@
 import { CommandContext } from 'grammy';
 import { MyContext } from '../../types';
-import {
-  userRepository,
-  companyRepository,
-  systemAdminRepository,
-  Company,
-} from '@financial-bot/database';
+import { companyRepository, systemAdminRepository, Company } from '@financial-bot/database';
 
 /**
  * Comando /register_company - Solicitar registro de nueva empresa
@@ -23,15 +18,7 @@ export async function registerCompanyCommand(ctx: CommandContext<MyContext>) {
   }
 
   try {
-    // Verificar si este usuario ya está registrado
-    const existingUser = await userRepository.findByTelegramId(telegramId);
-    if (existingUser) {
-      await ctx.reply(
-        '✅ Ya tienes una cuenta registrada. Usa /ayuda para ver los comandos disponibles.',
-      );
-      return;
-    }
-
+    // Obtener información de argumentos primero
     const args = ctx.match?.toString().trim().split(' ') || [];
     if (args.length < 2) {
       await ctx.reply(
@@ -53,6 +40,21 @@ export async function registerCompanyCommand(ctx: CommandContext<MyContext>) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(companyEmail)) {
       await ctx.reply('❌ El email de la empresa no es válido.');
+      return;
+    }
+
+    // Verificar si ya hay una empresa PENDIENTE con el mismo nombre y solicitante
+    const existingPendingCompanies = await companyRepository.findMany({
+      name: companyName,
+      requestedBy: telegramId,
+      status: 'PENDING',
+    });
+
+    if (existingPendingCompanies.length > 0) {
+      await ctx.reply(
+        `⏳ Ya tienes una solicitud pendiente para la empresa "${companyName}".\n\n` +
+          'Espera la aprobación antes de solicitar otra empresa con el mismo nombre.',
+      );
       return;
     }
 

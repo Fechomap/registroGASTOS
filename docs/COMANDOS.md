@@ -212,7 +212,7 @@
   📂 Categoría: Sin categoría
   📅 Fecha: 16/01/2025 14:30
 
-  El administrador ha sido notificado.
+  Gasto registrado exitosamente.
   ```
 
 ### `/movimientos` o `/movements`

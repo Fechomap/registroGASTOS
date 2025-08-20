@@ -195,6 +195,6 @@ export function getExpenseSuccessMessage(
     `${typeIcon} **Tipo:** ${typeText}\n` +
     `📌 **Folio:** ${folio}\n` +
     `💰 **Monto:** $${amount} MXN\n\n` +
-    `${isPersonal ? 'Gasto registrado en tu cuenta personal.' : 'El administrador ha sido notificado.'}`
+    `${isPersonal ? 'Gasto registrado en tu cuenta personal.' : 'Gasto registrado exitosamente.'}`
   );
 }

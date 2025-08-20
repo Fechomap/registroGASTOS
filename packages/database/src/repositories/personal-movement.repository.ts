@@ -97,29 +97,29 @@ export class PersonalMovementRepository {
     });
   }
 
-  async generateFolio(userId: string): Promise<string> {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-
-    // Buscar el último folio del mes para este usuario
+  async generateFolio(_userId: string): Promise<string> {
+    // Buscar el último folio personal
     const lastMovement = await prisma.personalMovement.findFirst({
       where: {
-        userId,
         folio: {
-          startsWith: `PER-${year}${month}-`,
+          startsWith: 'PER-',
         },
       },
       orderBy: { folio: 'desc' },
     });
 
-    let nextNumber = 1;
-    if (lastMovement) {
-      const lastNumber = parseInt(lastMovement.folio.slice(-6), 10);
-      nextNumber = lastNumber + 1;
+    let sequence = 1;
+    if (lastMovement?.folio) {
+      const parts = lastMovement.folio.split('-');
+      if (parts.length >= 2) {
+        const lastSequence = parseInt(parts[1]);
+        if (!isNaN(lastSequence)) {
+          sequence = lastSequence + 1;
+        }
+      }
     }
 
-    return `PER-${year}${month}-${String(nextNumber).padStart(6, '0')}`;
+    return `PER-${sequence}`;
   }
 
   async getTotalsByCategory(userId: string, dateFrom?: Date, dateTo?: Date) {

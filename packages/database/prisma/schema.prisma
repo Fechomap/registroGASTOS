@@ -127,7 +127,7 @@ model Movement {
   id            String         @id @default(cuid())
   companyId     String
   userId        String
-  folio         String         @unique
+  folio         String
   type          MovementType
   amount        Decimal        @db.Decimal(12, 2)
   currency      String         @default("MXN")
@@ -146,6 +146,7 @@ model Movement {
   attachments   Attachment[]
   auditLogs     AuditLog[]
   
+  @@unique([folio])
   @@index([companyId, date])
   @@index([companyId, userId])
   @@index([folio])
@@ -249,7 +250,7 @@ model PersonalCategory {
 model PersonalMovement {
   id            String               @id @default(cuid())
   userId        String
-  folio         String               @unique
+  folio         String
   type          MovementType
   amount        Decimal              @db.Decimal(12, 2)
   currency      String               @default("MXN")
@@ -266,6 +267,7 @@ model PersonalMovement {
   category      PersonalCategory?    @relation(fields: [categoryId], references: [id])
   attachments   PersonalAttachment[]
 
+  @@unique([folio])
   @@index([userId, date])
   @@index([folio])
   @@map("personal_movements")

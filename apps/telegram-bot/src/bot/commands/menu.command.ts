@@ -1,6 +1,6 @@
 import { CommandContext } from 'grammy';
 import { MyContext } from '../../types';
-import { userRepository, companyRepository } from '@financial-bot/database';
+import { userRepository } from '@financial-bot/database';
 import { createMainMenu, getMainMenuMessage } from '../menus/main.menu';
 
 /**
@@ -28,22 +28,29 @@ export async function menuCommand(ctx: CommandContext<MyContext>) {
       return;
     }
 
-    // Buscar empresa
-    const company = await companyRepository.findById(user.companyId);
+    // Obtener todas las empresas del usuario
+    const userCompanies = await userRepository.getUserCompanies(user.id);
 
-    if (!company) {
-      await ctx.reply('❌ Error al cargar información de la empresa.');
+    if (userCompanies.length === 0) {
+      await ctx.reply(
+        '❌ **No tienes empresas asociadas**\n\n' +
+          'Solicita el registro de una empresa usando `/register_company [nombre] [email]`',
+        { parse_mode: 'Markdown' },
+      );
       return;
     }
 
-    // Verificar si la empresa está aprobada
-    const isApproved = await companyRepository.isCompanyApproved(user.companyId);
+    // Verificar si tiene al menos una empresa aprobada
+    const approvedCompanies = userCompanies.filter(uc => uc.company.status === 'APPROVED');
 
-    if (!isApproved) {
+    if (approvedCompanies.length === 0) {
+      const pendingCompanies = userCompanies.filter(uc => uc.company.status === 'PENDING');
+      const pendingNames = pendingCompanies.map(uc => uc.company.name).join(', ');
+
       await ctx.reply(
-        `🏢 **Estado de Empresa: ${company.status}**\n\n` +
-          '⏳ Tu empresa está pendiente de aprobación.\n\n' +
-          'Recibirás una notificación cuando sea aprobada.',
+        `⏳ **Empresas pendientes de aprobación**\n\n` +
+          `📋 Empresas: ${pendingNames}\n\n` +
+          'Recibirás una notificación cuando sean aprobadas.',
         { parse_mode: 'Markdown' },
       );
       return;
@@ -51,7 +58,8 @@ export async function menuCommand(ctx: CommandContext<MyContext>) {
 
     // Crear menú principal
     const keyboard = createMainMenu(user.role);
-    const message = getMainMenuMessage(user.firstName, user.role, company.name);
+    const companyNames = approvedCompanies.map(uc => uc.company.name).join(', ');
+    const message = getMainMenuMessage(user.firstName, user.role, companyNames);
 
     await ctx.reply(message, {
       reply_markup: keyboard,

@@ -119,28 +119,61 @@ export async function startExpenseFlow(ctx: Context & MyContext) {
         return;
       }
 
-      // Si tiene una empresa, usar esa
-      const companyId = userCompanies[0].companyId;
+      // Filtrar solo empresas aprobadas
+      const approvedCompanies = userCompanies.filter(uc => uc.company.status === 'APPROVED');
 
-      const registerFlow: RegisterFlowData = {
-        step: 'amount',
-        expenseType: 'COMPANY',
-        companyId: companyId,
-      };
+      if (approvedCompanies.length === 0) {
+        await ctx.reply(
+          `👤 **Hola ${user.firstName}**\n\n` +
+            `⏳ **Empresas pendientes de aprobación**\n\n` +
+            `Espera a que tu administrador apruebe el acceso a empresas.`,
+          { parse_mode: 'Markdown' },
+        );
+        return;
+      }
 
-      ctx.session.conversationData = { registerFlow };
+      if (approvedCompanies.length === 1) {
+        // Solo una empresa aprobada, usar esa
+        const companyId = approvedCompanies[0].companyId;
 
-      await ctx.reply(
-        `🏢 **Registro de Gasto Empresarial**\n` +
-          `**Empresa:** ${userCompanies[0].company.name}\n\n` +
-          `💰 **Paso 1:** ¿Cuánto gastaste?\n\n` +
-          `Escribe solo el monto (ejemplo: 150 o 50.5)`,
-        {
-          reply_markup: new InlineKeyboard().text('❌ Cancelar', 'expense_cancel'),
+        const registerFlow: RegisterFlowData = {
+          step: 'amount',
+          expenseType: 'COMPANY',
+          companyId: companyId,
+        };
+
+        ctx.session.conversationData = { registerFlow };
+
+        await ctx.reply(
+          `🏢 **Registro de Gasto Empresarial**\n` +
+            `**Empresa:** ${approvedCompanies[0].company.name}\n\n` +
+            `💰 **Paso 1:** ¿Cuánto gastaste?\n\n` +
+            `Escribe solo el monto (ejemplo: 150 o 50.5)`,
+          {
+            reply_markup: new InlineKeyboard().text('❌ Cancelar', 'expense_cancel'),
+            parse_mode: 'Markdown',
+          },
+        );
+        return;
+      } else {
+        // Múltiples empresas, mostrar selector
+        const companies = approvedCompanies.map(uc => ({
+          id: uc.company.id,
+          name: uc.company.name,
+        }));
+
+        const registerFlow: RegisterFlowData = {
+          step: 'expense_type',
+        };
+
+        ctx.session.conversationData = { registerFlow };
+
+        await ctx.reply(getExpenseTypeMessage(companies), {
+          reply_markup: createExpenseTypeMenu(companies),
           parse_mode: 'Markdown',
-        },
-      );
-      return;
+        });
+        return;
+      }
     } catch (error) {
       console.error('Error getting user companies for operator:', error);
       await ctx.reply('❌ Error al verificar empresas. Intenta nuevamente.');
@@ -151,7 +184,9 @@ export async function startExpenseFlow(ctx: Context & MyContext) {
   // Para administradores, obtener empresas disponibles y mostrar opciones
   try {
     const userCompanies = await userRepository.getUserCompanies(user.id);
-    const companies = userCompanies.map(uc => ({
+    // Filtrar solo empresas aprobadas
+    const approvedCompanies = userCompanies.filter(uc => uc.company.status === 'APPROVED');
+    const companies = approvedCompanies.map(uc => ({
       id: uc.company.id,
       name: uc.company.name,
     }));
@@ -822,7 +857,7 @@ export async function saveExpense(ctx: Context & MyContext) {
       `📌 **Folio:** ${movement.folio}\n` +
       `💰 **Monto:** $${registerFlow.amount} MXN\n` +
       `📝 **Descripción:** ${registerFlow.description}${photoStatus}\n\n` +
-      `${isPersonal ? 'Gasto registrado en tu cuenta personal.' : 'El administrador ha sido notificado.'}`;
+      `${isPersonal ? 'Gasto registrado en tu cuenta personal.' : 'Gasto registrado exitosamente.'}`;
 
     await ctx.reply(message, {
       reply_markup: new InlineKeyboard()

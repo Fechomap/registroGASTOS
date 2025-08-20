@@ -44,21 +44,50 @@ export const userCommands = {
       // Verificar si el usuario ya existe
       const existingUser = await userRepository.findByChatId(chatId);
       if (existingUser) {
-        if (existingUser.companyId === ctx.session.user.companyId) {
+        // Verificar si ya está en esta empresa usando UserCompany
+        const userCompanies = await userRepository.getUserCompanies(existingUser.id);
+        const currentUser = ctx.session.user;
+        if (!currentUser) {
+          await ctx.reply('❌ Error de autenticación.');
+          return;
+        }
+
+        const isInThisCompany = userCompanies.some(uc => uc.companyId === currentUser.companyId);
+
+        if (isInThisCompany) {
+          const userCompany = userCompanies.find(uc => uc.companyId === currentUser.companyId);
           await ctx.reply(
             `❌ El usuario con chatId *${chatId}* ya pertenece a tu empresa.\n\n` +
               `👤 *Nombre:* ${existingUser.firstName} ${existingUser.lastName || ''}\n` +
-              `👔 *Rol:* ${existingUser.role === 'ADMIN' ? 'Administrador' : 'Operador'}\n` +
+              `👔 *Rol:* ${userCompany?.role === 'ADMIN' ? 'Administrador' : 'Operador'}\n` +
               `📊 *Estado:* ${existingUser.isActive ? 'Activo' : 'Inactivo'}`,
             { parse_mode: 'Markdown' },
           );
+          return;
         } else {
-          await ctx.reply('❌ Este usuario ya pertenece a otra empresa.');
+          // Usuario existe pero no está en esta empresa - agregarlo a la empresa
+          await userRepository.addUserToCompany(existingUser.id, currentUser.companyId, 'OPERATOR');
+
+          await ctx.reply(
+            `✅ *Usuario agregado exitosamente a la empresa*\n\n` +
+              `👤 *Nombre:* ${existingUser.firstName} ${existingUser.lastName || ''}\n` +
+              `📱 *Chat ID:* ${chatId}\n` +
+              `👔 *Rol:* Operador\n` +
+              `🏢 *Empresa:* ${currentUser.company.name}\n\n` +
+              `🔔 El usuario puede ahora acceder a esta empresa.`,
+            { parse_mode: 'Markdown' },
+          );
+          return;
         }
-        return;
       }
 
       // Crear nuevo usuario
+      const currentUser = ctx.session.user;
+      if (!currentUser) {
+        await ctx.reply('❌ Error de autenticación.');
+        return;
+      }
+
       const [firstName, ...lastNameParts] = name.split(' ');
       const lastName = lastNameParts.join(' ') || null;
 
@@ -70,9 +99,12 @@ export const userCommands = {
         role: UserRole.OPERATOR, // Por defecto operador
         isActive: true,
         company: {
-          connect: { id: ctx.session.user.companyId },
+          connect: { id: currentUser.companyId },
         },
       });
+
+      // Crear la relación UserCompany para soporte multi-empresa
+      await userRepository.addUserToCompany(newUser.id, currentUser.companyId, 'OPERATOR');
 
       // Crear categorías personales predefinidas para el nuevo usuario
       await personalCategoryRepository.createDefaultCategories(newUser.id);

@@ -163,15 +163,26 @@ export class MovementRepository {
   }
 
   async generateFolio(companyId: string): Promise<string> {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
+    // Obtener el nombre de la empresa para generar prefijo
+    const company = await prisma.company.findUnique({
+      where: { id: companyId },
+    });
 
+    if (!company) {
+      throw new Error('Company not found');
+    }
+
+    // Generar prefijo con las primeras 3 letras del nombre de la empresa
+    const prefix = company.name
+      .replace(/[^a-zA-Z]/g, '') // Solo letras
+      .substring(0, 3)
+      .toUpperCase();
+
+    // Buscar el último folio con este prefijo
     const lastMovement = await prisma.movement.findFirst({
       where: {
-        companyId,
         folio: {
-          startsWith: `F-${year}${month}`,
+          startsWith: `${prefix}-`,
         },
       },
       orderBy: { folio: 'desc' },
@@ -179,11 +190,16 @@ export class MovementRepository {
 
     let sequence = 1;
     if (lastMovement?.folio) {
-      const lastSequence = parseInt(lastMovement.folio.split('-')[1].slice(6));
-      sequence = lastSequence + 1;
+      const parts = lastMovement.folio.split('-');
+      if (parts.length >= 2) {
+        const lastSequence = parseInt(parts[1]);
+        if (!isNaN(lastSequence)) {
+          sequence = lastSequence + 1;
+        }
+      }
     }
 
-    return `F-${year}${month}${String(sequence).padStart(4, '0')}`;
+    return `${prefix}-${sequence}`;
   }
 
   async getDailySummary(companyId: string, date: Date) {
