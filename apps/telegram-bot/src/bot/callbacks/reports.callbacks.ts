@@ -1,13 +1,20 @@
-import { CallbackQueryContext, InputFile } from 'grammy';
+import { CallbackQueryContext } from 'grammy';
 import { MyContext } from '../../types';
-import { ReportsService, ReportFilters } from '../../services/reports.service';
+import { ReportsService } from '../../services/reports.service';
 import {
   categoryRepository,
   personalCategoryRepository,
   userRepository,
+  permissionsService,
+  companyRepository,
+  movementRepository,
+  MovementWithRelations,
 } from '@financial-bot/database';
-import { MovementFilterBuilder } from '@financial-bot/reports';
 import { logBotError } from '../../utils/logger';
+import {
+  advancedReportsService,
+  AdvancedReportFilters,
+} from '../../services/advanced-reports.service';
 
 const reportsService = new ReportsService();
 
@@ -23,27 +30,51 @@ export async function handleShowReportsPanel(ctx: CallbackQueryContext<MyContext
   }
 
   try {
-    // Inicializar filtros si no existen
-    if (!ctx.session.reportFilters) {
-      ctx.session.reportFilters = reportsService.createDefaultFilters();
+    // Verificar si el usuario tiene permisos de reportes
+    const reportScope = await permissionsService.getUserReportScope(user.id);
+
+    // Inicializar filtros avanzados si no existen
+    if (!ctx.session.advancedReportFilters) {
+      ctx.session.advancedReportFilters = {
+        period: 'month',
+        type: 'ALL',
+        scope: 'COMPANY',
+      };
     }
 
-    // Obtener resumen con filtros actuales
-    const summary = await reportsService.getReportSummary(
-      user.companyId,
+    // Obtener resumen con permisos y filtros
+    const summary = await advancedReportsService.generateReport(
       user.id,
-      user.role,
-      ctx.session.reportFilters,
+      ctx.session.advancedReportFilters,
     );
 
-    // Crear teclado y mensaje
-    const keyboard = reportsService.createReportsKeyboard(ctx.session.reportFilters, user.role);
-    const message = reportsService.formatReportsMessage(
-      summary,
-      user.company.name,
-      user.role,
-      user.firstName,
+    // Crear teclado respetando permisos
+    const keyboard = await advancedReportsService.createReportsKeyboard(
+      user.id,
+      ctx.session.advancedReportFilters,
     );
+
+    // Formatear mensaje con información de permisos
+    const accessibleCompanies = await permissionsService.getUserAccessibleCompanies(user.id);
+    let message = `📊 **Panel de Reportes**\n\n`;
+    message += `👤 **Usuario:** ${user.firstName}\n`;
+    message += `🔐 **Alcance:** ${reportScope === 'all' ? 'Super Admin' : reportScope === 'company' ? 'Multi-empresa' : 'Personal'}\n`;
+    message += `🏢 **Empresas accesibles:** ${accessibleCompanies.length}\n\n`;
+
+    // Resumen de movimientos
+    message += `📈 **Resumen**\n`;
+    message += `• Movimientos: ${summary.totalMovements}\n`;
+    message += `• Gastos: $${summary.totalExpenses.toLocaleString()}\n`;
+    message += `• Ingresos: $${summary.totalIncomes.toLocaleString()}\n`;
+    message += `• Balance: $${summary.balance.toLocaleString()}\n\n`;
+
+    // Filtros aplicados
+    message += `🔍 **Filtros activos:**\n`;
+    message += `• Período: ${summary.appliedFilters.period}\n`;
+    message += `• Tipo: ${summary.appliedFilters.type}\n`;
+    if (summary.appliedFilters.companyIds?.length) {
+      message += `• Empresas: ${summary.appliedFilters.companyIds.length} seleccionadas\n`;
+    }
 
     await ctx.editMessageText(message, {
       reply_markup: keyboard,
@@ -65,19 +96,23 @@ export async function handlePeriodFilter(ctx: CallbackQueryContext<MyContext>) {
   if (!user) return;
 
   try {
-    const currentPeriod = ctx.session.reportFilters?.period || 'month';
+    const currentPeriod = ctx.session.advancedReportFilters?.period || 'month';
 
     // Rotar entre períodos disponibles
     const periods = ['today', 'week', 'month', 'custom'];
     const currentIndex = periods.indexOf(currentPeriod);
     const nextIndex = (currentIndex + 1) % periods.length;
-    const newPeriod = periods[nextIndex] as ReportFilters['period'];
+    const newPeriod = periods[nextIndex] as AdvancedReportFilters['period'];
 
-    // Actualizar filtros
-    if (!ctx.session.reportFilters) {
-      ctx.session.reportFilters = reportsService.createDefaultFilters();
+    // Actualizar filtros avanzados
+    if (!ctx.session.advancedReportFilters) {
+      ctx.session.advancedReportFilters = {
+        period: 'month',
+        type: 'ALL',
+        scope: 'COMPANY',
+      };
     }
-    ctx.session.reportFilters.period = newPeriod;
+    ctx.session.advancedReportFilters.period = newPeriod;
 
     // Refrescar panel
     await handleShowReportsPanel(ctx);
@@ -95,19 +130,23 @@ export async function handleTypeFilter(ctx: CallbackQueryContext<MyContext>) {
   if (!user) return;
 
   try {
-    const currentType = ctx.session.reportFilters?.type || 'ALL';
+    const currentType = ctx.session.advancedReportFilters?.type || 'ALL';
 
     // Rotar entre tipos
     const types = ['ALL', 'EXPENSE', 'INCOME'];
     const currentIndex = types.indexOf(currentType);
     const nextIndex = (currentIndex + 1) % types.length;
-    const newType = types[nextIndex] as ReportFilters['type'];
+    const newType = types[nextIndex] as AdvancedReportFilters['type'];
 
-    // Actualizar filtros
-    if (!ctx.session.reportFilters) {
-      ctx.session.reportFilters = reportsService.createDefaultFilters();
+    // Actualizar filtros avanzados
+    if (!ctx.session.advancedReportFilters) {
+      ctx.session.advancedReportFilters = {
+        period: 'month',
+        type: 'ALL',
+        scope: 'COMPANY',
+      };
     }
-    ctx.session.reportFilters.type = newType;
+    ctx.session.advancedReportFilters.type = newType;
 
     // Refrescar panel
     await handleShowReportsPanel(ctx);
@@ -118,29 +157,53 @@ export async function handleTypeFilter(ctx: CallbackQueryContext<MyContext>) {
 }
 
 /**
- * Manejar filtro de scope (solo admins)
+ * Manejar filtro de scope - respeta permisos multi-empresa
  */
 export async function handleScopeFilter(ctx: CallbackQueryContext<MyContext>) {
   const user = ctx.session.user;
-  if (!user || user.role !== 'ADMIN') {
-    await ctx.answerCallbackQuery('❌ Solo admins pueden cambiar el alcance');
-    return;
-  }
+  if (!user) return;
 
   try {
-    const currentScope = ctx.session.reportFilters?.scope || 'ALL';
+    // Verificar permisos de reportes del usuario
+    const reportScope = await permissionsService.getUserReportScope(user.id);
 
-    // Rotar entre scopes
-    const scopes = ['ALL', 'COMPANY', 'PERSONAL'];
-    const currentIndex = scopes.indexOf(currentScope);
-    const nextIndex = (currentIndex + 1) % scopes.length;
-    const newScope = scopes[nextIndex] as ReportFilters['scope'];
-
-    // Actualizar filtros
-    if (!ctx.session.reportFilters) {
-      ctx.session.reportFilters = reportsService.createDefaultFilters();
+    if (reportScope === 'own') {
+      await ctx.answerCallbackQuery('❌ Solo puedes ver tus movimientos personales');
+      return;
     }
-    ctx.session.reportFilters.scope = newScope;
+
+    const currentScope = ctx.session.advancedReportFilters?.scope || 'COMPANY';
+
+    // Determinar scopes disponibles según permisos
+    let availableScopes: AdvancedReportFilters['scope'][] = [];
+
+    if (reportScope === 'all') {
+      // Super Admin - todos los scopes
+      availableScopes = ['ALL', 'COMPANY', 'PERSONAL'];
+    } else if (reportScope === 'company') {
+      // Admin con permisos de empresa
+      availableScopes = ['COMPANY', 'PERSONAL'];
+    }
+
+    if (availableScopes.length <= 1) {
+      await ctx.answerCallbackQuery('✅ Solo tienes un alcance disponible');
+      return;
+    }
+
+    // Rotar entre scopes disponibles
+    const currentIndex = availableScopes.indexOf(currentScope);
+    const nextIndex = (currentIndex + 1) % availableScopes.length;
+    const newScope = availableScopes[nextIndex];
+
+    // Actualizar filtros avanzados
+    if (!ctx.session.advancedReportFilters) {
+      ctx.session.advancedReportFilters = {
+        period: 'month',
+        type: 'ALL',
+        scope: 'COMPANY',
+      };
+    }
+    ctx.session.advancedReportFilters.scope = newScope;
 
     // Refrescar panel
     await handleShowReportsPanel(ctx);
@@ -336,8 +399,12 @@ export async function handleClearFilters(ctx: CallbackQueryContext<MyContext>) {
   if (!user) return;
 
   try {
-    // Resetear filtros a valores por defecto
-    ctx.session.reportFilters = reportsService.createDefaultFilters();
+    // Resetear filtros avanzados a valores por defecto
+    ctx.session.advancedReportFilters = {
+      period: 'month',
+      type: 'ALL',
+      scope: 'COMPANY',
+    };
 
     // Refrescar panel
     await handleShowReportsPanel(ctx);
@@ -349,7 +416,7 @@ export async function handleClearFilters(ctx: CallbackQueryContext<MyContext>) {
 }
 
 /**
- * Generar reportes completos (Excel y PDF)
+ * Generar reportes completos (Excel y PDF) - Multi-empresa con permisos
  */
 export async function handleGenerateReports(ctx: CallbackQueryContext<MyContext>) {
   const user = ctx.session.user;
@@ -358,74 +425,77 @@ export async function handleGenerateReports(ctx: CallbackQueryContext<MyContext>
   try {
     await ctx.answerCallbackQuery('📊 Generando reportes...');
 
-    const filters = ctx.session.reportFilters || reportsService.createDefaultFilters();
+    const filters = ctx.session.advancedReportFilters || {
+      period: 'month',
+      type: 'ALL',
+      scope: 'COMPANY',
+    };
 
-    // Obtener todos los movimientos con filtros aplicados
-    const allMovements = await reportsService.getAllMovements(
-      user.companyId,
-      user.id,
-      user.role,
-      filters,
-    );
+    // Generar reporte usando el servicio avanzado con permisos
+    const summary = await advancedReportsService.generateReport(user.id, filters);
 
-    if (allMovements.length === 0) {
+    if (summary.totalMovements === 0) {
       await ctx.reply(
         '📭 **No hay movimientos para exportar**\n\nAjusta los filtros para incluir más datos.',
+        { parse_mode: 'Markdown' },
       );
       return;
     }
 
-    // Crear filtros para los generadores
-    const filterBuilder = new MovementFilterBuilder(user.companyId);
-    switch (filters.period) {
-      case 'today':
-        filterBuilder.today();
-        break;
-      case 'week':
-        filterBuilder.thisWeek();
-        break;
-      case 'month':
-        filterBuilder.thisMonth();
-        break;
+    // Verificar si es Super Admin para determinar el nombre del reporte
+    const isSuperAdmin = await permissionsService.isSuperAdmin(user.telegramId);
+    const companyNameForReport = isSuperAdmin ? 'TODAS LAS EMPRESAS' : user.company.name;
+
+    // Obtener todos los movimientos del reporte
+    let allMovements: MovementWithRelations[] = [];
+
+    if (isSuperAdmin) {
+      // Super Admin: obtener movimientos de todas las empresas
+      const allCompanies = await companyRepository.findApprovedCompanies();
+
+      for (const company of allCompanies) {
+        const companyFilters = { companyId: company.id };
+        const companyMovements = await movementRepository.findMany(companyFilters);
+        allMovements = [...allMovements, ...companyMovements];
+      }
+    } else {
+      // Usuario normal: solo su empresa
+      const companyFilters = { companyId: user.companyId };
+      allMovements = await movementRepository.findMany(companyFilters);
     }
-    if (filters.categoryId) filterBuilder.byCategory(filters.categoryId);
-    if (filters.userId) filterBuilder.byUser(filters.userId);
-    if (filters.type !== 'ALL') filterBuilder.byType(filters.type as 'EXPENSE' | 'INCOME');
-    const dbFilters = filterBuilder.build();
 
     // Generar Excel
     const excelBuffer = await reportsService.generateExcelReport(
-      user.company.name,
+      companyNameForReport,
       allMovements,
-      dbFilters,
+      { companyId: isSuperAdmin ? '' : user.companyId },
     );
 
     // Generar PDF
-    const pdfBuffer = await reportsService.generatePDFReport(
-      user.company.name,
-      allMovements,
-      dbFilters,
-    );
+    const pdfBuffer = await reportsService.generatePDFReport(companyNameForReport, allMovements, {
+      companyId: isSuperAdmin ? '' : user.companyId,
+    });
 
-    // Crear nombres de archivo con fecha
     const fecha = new Date().toISOString().split('T')[0];
-    const excelFileName = `movimientos_${fecha}.xlsx`;
-    const pdfFileName = `movimientos_${fecha}.pdf`;
 
     // Enviar Excel
-    await ctx.api.sendDocument(ctx.chat!.id, new InputFile(excelBuffer, excelFileName), {
-      caption: `📊 **Reporte Excel - ${user.company.name}**\n\nMovimientos: ${allMovements.length}\nGenerado: ${new Date().toLocaleDateString('es-MX')}`,
-      parse_mode: 'Markdown',
-    });
+    await ctx.api.sendDocument(
+      ctx.chat!.id,
+      new (await import('grammy')).InputFile(excelBuffer, `reporte_${fecha}.xlsx`),
+      {
+        caption: `📊 **Reporte Excel - ${companyNameForReport}**\n${summary.totalMovements} movimientos`,
+        parse_mode: 'Markdown',
+      },
+    );
 
     // Enviar PDF
-    await ctx.api.sendDocument(ctx.chat!.id, new InputFile(pdfBuffer, pdfFileName), {
-      caption: `📄 **Reporte PDF - ${user.company.name}**\n\nMovimientos: ${allMovements.length}\nGenerado: ${new Date().toLocaleDateString('es-MX')}`,
-      parse_mode: 'Markdown',
-    });
-
-    await ctx.reply(
-      '✅ **Reportes generados exitosamente**\n\nSe han enviado los archivos Excel y PDF con todos los movimientos filtrados.',
+    await ctx.api.sendDocument(
+      ctx.chat!.id,
+      new (await import('grammy')).InputFile(pdfBuffer, `reporte_${fecha}.pdf`),
+      {
+        caption: `📄 **Reporte PDF - ${companyNameForReport}**\n${summary.totalMovements} movimientos`,
+        parse_mode: 'Markdown',
+      },
     );
   } catch (error) {
     logBotError(error as Error, { command: 'generate_reports' });

@@ -18,11 +18,13 @@ import {
   rejectCompanyCommand,
 } from './admin.command';
 import { setupSuperAdminCommand } from './setup-admin.command';
+import { permissionsCommands } from './permissions.command';
 import { menuCommand, startCommand as newStartCommand } from './menu.command';
 import { handleMenuCallback } from '../callbacks/menu.callbacks';
 import { handleConversationMessage } from '../handlers/conversation.handler';
 import { editFlowMiddleware } from '../middleware/edit-flow.middleware';
 import { companyApprovalMiddleware } from '../middleware/company-approval.middleware';
+import { permissionsMiddleware } from '../middleware/permissions.middleware';
 import {
   handleEditFieldSelection,
   handleEditCategorySelection,
@@ -62,6 +64,7 @@ import {
 export function setupCommands(bot: Bot<MyContext>) {
   // Middleware para manejar flujos
   bot.use(companyApprovalMiddleware);
+  bot.use(permissionsMiddleware); // Verificación de permisos granulares
   bot.use(editFlowMiddleware);
   bot.use(categoryFlowMiddleware);
 
@@ -225,6 +228,11 @@ export function setupCommands(bot: Bot<MyContext>) {
   // Comandos de categorías (solo admin)
   bot.command('categorias', categoriesCommand);
   bot.command('categories', categoriesCommand); // Alias en inglés
+
+  // Comandos de permisos (solo super admin)
+  bot.command('permisos', permissionsCommands.showPermissionsPanel);
+  bot.command('permisos_usuario', permissionsCommands.manageUserPermissions);
+  bot.command('permisos_empresa', permissionsCommands.showCompanyPermissions);
 
   // Manejar mensajes de texto que no son comandos
   bot.on('message:text', async ctx => {

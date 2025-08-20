@@ -8,9 +8,13 @@ import {
   personalMovementRepository,
   MovementWithRelations,
   PersonalMovementWithRelations,
+  permissionsService,
+  companyRepository,
+  categoryRepository,
 } from '@financial-bot/database';
 import { logBotError } from '../../utils/logger';
 import { PeriodFilter, MovementTypeFilter, ScopeFilter } from '../../types/filter.types';
+import { canEditMovement } from '../../middleware/auth';
 
 // Servicios instanciados
 const movementsService = new MovementsService();
@@ -53,11 +57,12 @@ export async function handleShowMovements(ctx: CallbackQueryContext<MyContext>) 
     );
 
     // Formatear mensaje con indicadores de filtros
-    const message = movementsService.formatMovementMessageWithFilters(
+    const message = await movementsService.formatMovementMessageWithFilters(
       summary,
       user.company.name,
       user.role,
       user.firstName,
+      user.id,
       ctx.session.movementFilterState,
     );
 
@@ -576,26 +581,54 @@ export async function handleGenerateReport(ctx: CallbackQueryContext<MyContext>)
   try {
     await ctx.answerCallbackQuery('⏳ Generando reporte...');
 
-    // Obtener filtros aplicados
-    const filters = ctx.session.movementFilterState?.isActive
-      ? filtersService.convertToMovementFilters(ctx.session.movementFilterState, user.companyId)
-      : { companyId: user.companyId };
+    // Verificar si es Super Admin
+    const isSuperAdmin = await permissionsService.isSuperAdmin(user.telegramId);
 
-    // Obtener todos los movimientos con filtros
-    const allMovements = await movementRepository.findMany(filters);
+    let allMovements: MovementWithRelations[] = [];
+    let companyNameForReport = user.company.name;
+
+    if (isSuperAdmin) {
+      // Super Admin: obtener movimientos de TODAS las empresas
+      const allCompanies = await companyRepository.findApprovedCompanies();
+      companyNameForReport = 'TODAS LAS EMPRESAS';
+
+      for (const company of allCompanies) {
+        const companyFilters = ctx.session.movementFilterState?.isActive
+          ? filtersService.convertToMovementFilters(ctx.session.movementFilterState, company.id)
+          : { companyId: company.id };
+
+        const companyMovements = await movementRepository.findMany(companyFilters);
+        allMovements = [...allMovements, ...companyMovements];
+      }
+    } else {
+      // Usuario normal: solo su empresa
+      const filters = ctx.session.movementFilterState?.isActive
+        ? filtersService.convertToMovementFilters(ctx.session.movementFilterState, user.companyId)
+        : { companyId: user.companyId };
+
+      allMovements = await movementRepository.findMany(filters);
+    }
+
+    // Crear filtros para el reporte (sin companyId específico para Super Admin)
+    const reportFilters =
+      isSuperAdmin && !ctx.session.movementFilterState?.isActive
+        ? { companyId: '' } // Filtro vacío para Super Admin
+        : ctx.session.movementFilterState?.isActive
+          ? filtersService.convertToMovementFilters(ctx.session.movementFilterState, user.companyId)
+          : { companyId: user.companyId };
 
     // Generar Excel
     const excelBuffer = await movementsService.generateExcelReport(
-      user.company.name,
+      companyNameForReport,
       allMovements,
-      filters,
+      reportFilters,
     );
 
     // Generar PDF
     const pdfBuffer = await movementsService.generatePDFReport(
-      user.company.name,
+      companyNameForReport,
       allMovements,
-      filters,
+      reportFilters,
     );
 
     const fecha = new Date().toISOString().split('T')[0];
@@ -727,11 +760,12 @@ export async function handleMovementsPage(ctx: CallbackQueryContext<MyContext>) 
       user.role,
     );
 
-    const message = movementsService.formatMovementMessageWithFilters(
+    const message = await movementsService.formatMovementMessageWithFilters(
       summary,
       user.company.name,
       user.role,
       user.firstName,
+      user.id,
       ctx.session.movementFilterState,
     );
 
@@ -745,4 +779,402 @@ export async function handleMovementsPage(ctx: CallbackQueryContext<MyContext>) 
     logBotError(error as Error, { command: 'movements_page' });
     await ctx.answerCallbackQuery('❌ Error al cambiar página');
   }
+}
+
+/**
+ * ========================================
+ * SISTEMA CRUD PARA GESTIÓN DE GASTOS
+ * ========================================
+ */
+
+/**
+ * Editar un movimiento - Mostrar opciones de edición
+ */
+export async function handleMovementEdit(ctx: CallbackQueryContext<MyContext>) {
+  const user = ctx.session.user;
+  const data = ctx.callbackQuery.data;
+
+  if (!user || !data) return;
+
+  try {
+    const movementId = data.replace('movement_edit_', '');
+
+    // Buscar el movimiento
+    const movement = await movementRepository.findById(movementId);
+    if (!movement) {
+      await ctx.answerCallbackQuery('❌ Movimiento no encontrado');
+      return;
+    }
+
+    // Verificar permisos
+    if (!canEditMovement(ctx, movement.userId)) {
+      await ctx.answerCallbackQuery('❌ No tienes permisos para editar este movimiento');
+      return;
+    }
+
+    const message =
+      `✏️ **Editar Movimiento**\n\n` +
+      `📌 **Folio:** ${movement.folio}\n` +
+      `💰 **Monto actual:** $${Number(movement.amount).toLocaleString('es-MX', { minimumFractionDigits: 2 })}\n` +
+      `📝 **Descripción actual:** ${movement.description}\n` +
+      `📅 **Fecha actual:** ${new Date(movement.date).toLocaleDateString('es-MX')}\n\n` +
+      `**¿Qué deseas editar?**`;
+
+    const keyboard = new (await import('grammy')).InlineKeyboard()
+      .text('💰 Monto', `movement_edit_field_amount_${movementId}`)
+      .text('📝 Descripción', `movement_edit_field_description_${movementId}`)
+      .row()
+      .text('📁 Categoría', `movement_edit_field_category_${movementId}`)
+      .text('📅 Fecha', `movement_edit_field_date_${movementId}`)
+      .row()
+      .text('◀️ Volver', `movement_detail_${movementId}`);
+
+    await ctx.editMessageText(message, {
+      reply_markup: keyboard,
+      parse_mode: 'Markdown',
+    });
+
+    await ctx.answerCallbackQuery();
+  } catch (error) {
+    logBotError(error as Error, { command: 'movement_edit' });
+    await ctx.answerCallbackQuery('❌ Error al cargar opciones de edición');
+  }
+}
+
+/**
+ * Editar campo específico de un movimiento
+ */
+export async function handleMovementEditField(ctx: CallbackQueryContext<MyContext>) {
+  const user = ctx.session.user;
+  const data = ctx.callbackQuery.data;
+
+  if (!user || !data) return;
+
+  try {
+    const parts = data.replace('movement_edit_field_', '').split('_');
+    const field = parts[0];
+    const movementId = parts[1];
+
+    // Verificar que el movimiento existe y que el usuario puede editarlo
+    const movement = await movementRepository.findById(movementId);
+    if (!movement) {
+      await ctx.answerCallbackQuery('❌ Movimiento no encontrado');
+      return;
+    }
+
+    if (!canEditMovement(ctx, movement.userId)) {
+      await ctx.answerCallbackQuery('❌ No tienes permisos para editar este movimiento');
+      return;
+    }
+
+    // Configurar estado de edición
+    ctx.session.editMovementState = {
+      movementId,
+      field: field as 'amount' | 'description' | 'category' | 'date',
+      currentValue: getCurrentFieldValue(movement, field),
+    };
+
+    let message = '';
+    const keyboard = new (await import('grammy')).InlineKeyboard();
+
+    switch (field) {
+      case 'amount':
+        message =
+          `💰 **Editar Monto**\n\n` +
+          `📌 Folio: ${movement.folio}\n` +
+          `💰 **Monto actual:** $${Number(movement.amount).toLocaleString('es-MX', { minimumFractionDigits: 2 })}\n\n` +
+          `**Envía el nuevo monto:**\n` +
+          `💡 Ejemplo: 150.50 o 1250`;
+
+        keyboard.text('❌ Cancelar', `movement_edit_${movementId}`);
+        break;
+
+      case 'description':
+        message =
+          `📝 **Editar Descripción**\n\n` +
+          `📌 Folio: ${movement.folio}\n` +
+          `📝 **Descripción actual:** ${movement.description}\n\n` +
+          `**Envía la nueva descripción:**\n` +
+          `💡 Máximo 100 caracteres`;
+
+        keyboard.text('❌ Cancelar', `movement_edit_${movementId}`);
+        break;
+
+      case 'category': {
+        // Mostrar lista de categorías
+        const categories = await categoryRepository.findByCompany(movement.companyId);
+
+        message =
+          `📁 **Editar Categoría**\n\n` +
+          `📌 Folio: ${movement.folio}\n` +
+          `📁 **Categoría actual:** ${movement.category?.name || 'Sin categoría'}\n\n` +
+          `**Selecciona nueva categoría:**`;
+
+        categories.forEach(category => {
+          keyboard
+            .text(
+              `${category.icon || '📂'} ${category.name}`,
+              `movement_update_category_${movementId}_${category.id}`,
+            )
+            .row();
+        });
+
+        keyboard
+          .text('❌ Sin categoría', `movement_update_category_${movementId}_none`)
+          .row()
+          .text('◀️ Cancelar', `movement_edit_${movementId}`);
+        break;
+      }
+
+      case 'date': {
+        // Generar opciones de fecha
+        const today = new Date();
+        const dates = [];
+
+        for (let i = 0; i < 7; i++) {
+          const date = new Date(today);
+          date.setDate(today.getDate() - i);
+          dates.push({
+            date,
+            label: i === 0 ? 'Hoy' : i === 1 ? 'Ayer' : `${date.getDate()}/${date.getMonth() + 1}`,
+          });
+        }
+
+        message =
+          `📅 **Editar Fecha**\n\n` +
+          `📌 Folio: ${movement.folio}\n` +
+          `📅 **Fecha actual:** ${new Date(movement.date).toLocaleDateString('es-MX')}\n\n` +
+          `**Selecciona nueva fecha:**`;
+
+        dates.forEach(({ date, label }) => {
+          const dateStr = date.toISOString().split('T')[0];
+          keyboard.text(label, `movement_update_date_${movementId}_${dateStr}`).row();
+        });
+
+        keyboard
+          .text('📅 Otra fecha', `movement_edit_date_custom_${movementId}`)
+          .row()
+          .text('◀️ Cancelar', `movement_edit_${movementId}`);
+        break;
+      }
+
+      default:
+        await ctx.answerCallbackQuery('❌ Campo no válido');
+        return;
+    }
+
+    await ctx.editMessageText(message, {
+      reply_markup: keyboard,
+      parse_mode: 'Markdown',
+    });
+
+    await ctx.answerCallbackQuery();
+  } catch (error) {
+    logBotError(error as Error, { command: 'movement_edit_field' });
+    await ctx.answerCallbackQuery('❌ Error al editar campo');
+  }
+}
+
+/**
+ * Actualizar categoría de un movimiento
+ */
+export async function handleMovementUpdateCategory(ctx: CallbackQueryContext<MyContext>) {
+  const user = ctx.session.user;
+  const data = ctx.callbackQuery.data;
+
+  if (!user || !data) return;
+
+  try {
+    const parts = data.replace('movement_update_category_', '').split('_');
+    const movementId = parts[0];
+    const categoryId = parts[1] === 'none' ? null : parts[1];
+
+    // Verificar movimiento y permisos
+    const movement = await movementRepository.findById(movementId);
+    if (!movement || !canEditMovement(ctx, movement.userId)) {
+      await ctx.answerCallbackQuery('❌ No tienes permisos');
+      return;
+    }
+
+    // Actualizar movimiento
+    await movementRepository.update(movementId, {
+      category: categoryId ? { connect: { id: categoryId } } : { disconnect: true },
+    });
+
+    const categoryName = categoryId
+      ? (await categoryRepository.findById(categoryId))?.name || 'Categoría'
+      : 'Sin categoría';
+
+    await ctx.answerCallbackQuery(`✅ Categoría actualizada: ${categoryName}`);
+
+    // Volver al detalle del movimiento
+    await redirectToMovementDetail(ctx, movementId);
+  } catch (error) {
+    logBotError(error as Error, { command: 'movement_update_category' });
+    await ctx.answerCallbackQuery('❌ Error al actualizar categoría');
+  }
+}
+
+/**
+ * Actualizar fecha de un movimiento
+ */
+export async function handleMovementUpdateDate(ctx: CallbackQueryContext<MyContext>) {
+  const user = ctx.session.user;
+  const data = ctx.callbackQuery.data;
+
+  if (!user || !data) return;
+
+  try {
+    const parts = data.replace('movement_update_date_', '').split('_');
+    const movementId = parts[0];
+    const dateStr = parts[1];
+
+    // Verificar movimiento y permisos
+    const movement = await movementRepository.findById(movementId);
+    if (!movement || !canEditMovement(ctx, movement.userId)) {
+      await ctx.answerCallbackQuery('❌ No tienes permisos');
+      return;
+    }
+
+    const newDate = new Date(dateStr);
+
+    // Actualizar movimiento
+    await movementRepository.update(movementId, {
+      date: newDate,
+    });
+
+    await ctx.answerCallbackQuery(`✅ Fecha actualizada: ${newDate.toLocaleDateString('es-MX')}`);
+
+    // Volver al detalle del movimiento
+    await redirectToMovementDetail(ctx, movementId);
+  } catch (error) {
+    logBotError(error as Error, { command: 'movement_update_date' });
+    await ctx.answerCallbackQuery('❌ Error al actualizar fecha');
+  }
+}
+
+/**
+ * Eliminar un movimiento - Mostrar confirmación
+ */
+export async function handleMovementDelete(ctx: CallbackQueryContext<MyContext>) {
+  const user = ctx.session.user;
+  const data = ctx.callbackQuery.data;
+
+  if (!user || !data) return;
+
+  try {
+    const movementId = data.replace('movement_delete_', '');
+
+    // Buscar el movimiento
+    const movement = await movementRepository.findById(movementId);
+    if (!movement) {
+      await ctx.answerCallbackQuery('❌ Movimiento no encontrado');
+      return;
+    }
+
+    // Verificar permisos
+    if (!canEditMovement(ctx, movement.userId)) {
+      await ctx.answerCallbackQuery('❌ No tienes permisos para eliminar este movimiento');
+      return;
+    }
+
+    const message =
+      `🗑️ **Confirmar Eliminación**\n\n` +
+      `📌 **Folio:** ${movement.folio}\n` +
+      `💰 **Monto:** $${Number(movement.amount).toLocaleString('es-MX', { minimumFractionDigits: 2 })}\n` +
+      `📝 **Descripción:** ${movement.description}\n` +
+      `📅 **Fecha:** ${new Date(movement.date).toLocaleDateString('es-MX')}\n\n` +
+      `⚠️ **Esta acción no se puede deshacer.**\n\n` +
+      `¿Estás seguro de eliminar este movimiento?`;
+
+    const keyboard = new (await import('grammy')).InlineKeyboard()
+      .text('🗑️ Sí, Eliminar', `movement_delete_confirm_${movementId}`)
+      .text('❌ Cancelar', `movement_detail_${movementId}`)
+      .row();
+
+    await ctx.editMessageText(message, {
+      reply_markup: keyboard,
+      parse_mode: 'Markdown',
+    });
+
+    await ctx.answerCallbackQuery();
+  } catch (error) {
+    logBotError(error as Error, { command: 'movement_delete' });
+    await ctx.answerCallbackQuery('❌ Error al cargar confirmación');
+  }
+}
+
+/**
+ * Confirmar eliminación de movimiento
+ */
+export async function handleMovementDeleteConfirm(ctx: CallbackQueryContext<MyContext>) {
+  const user = ctx.session.user;
+  const data = ctx.callbackQuery.data;
+
+  if (!user || !data) return;
+
+  try {
+    const movementId = data.replace('movement_delete_confirm_', '');
+
+    // Verificar movimiento y permisos
+    const movement = await movementRepository.findById(movementId);
+    if (!movement || !canEditMovement(ctx, movement.userId)) {
+      await ctx.answerCallbackQuery('❌ No tienes permisos');
+      return;
+    }
+
+    // Eliminar el movimiento
+    await movementRepository.delete(movementId);
+
+    const message =
+      `✅ **Movimiento Eliminado**\n\n` +
+      `📌 **Folio eliminado:** ${movement.folio}\n` +
+      `💰 **Monto:** $${Number(movement.amount).toLocaleString('es-MX', { minimumFractionDigits: 2 })}\n` +
+      `📝 **Descripción:** ${movement.description}\n\n` +
+      `El movimiento ha sido eliminado permanentemente.`;
+
+    const keyboard = new (await import('grammy')).InlineKeyboard()
+      .text('📊 Ver Movimientos', 'main_movements')
+      .text('🏠 Menú Principal', 'main_menu')
+      .row();
+
+    await ctx.editMessageText(message, {
+      reply_markup: keyboard,
+      parse_mode: 'Markdown',
+    });
+
+    await ctx.answerCallbackQuery('✅ Movimiento eliminado');
+  } catch (error) {
+    logBotError(error as Error, { command: 'movement_delete_confirm' });
+    await ctx.answerCallbackQuery('❌ Error al eliminar movimiento');
+  }
+}
+
+/**
+ * Helper: Obtener valor actual de un campo
+ */
+function getCurrentFieldValue(movement: MovementWithRelations, field: string): unknown {
+  switch (field) {
+    case 'amount':
+      return Number(movement.amount);
+    case 'description':
+      return movement.description;
+    case 'category':
+      return movement.categoryId;
+    case 'date':
+      return movement.date;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Helper: Redirigir al detalle del movimiento
+ */
+async function redirectToMovementDetail(ctx: CallbackQueryContext<MyContext>, movementId: string) {
+  // Re-llamar a la función original de detalle
+  const originalData = ctx.callbackQuery.data;
+  ctx.callbackQuery = { ...ctx.callbackQuery, data: `movement_detail_${movementId}` };
+  await handleMovementDetail(ctx);
+  ctx.callbackQuery = { ...ctx.callbackQuery, data: originalData };
 }

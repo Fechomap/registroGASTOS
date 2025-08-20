@@ -109,6 +109,21 @@ export class CompanyRepository {
       orderBy: { createdAt: 'desc' },
     });
   }
+
+  /**
+   * Buscar empresas por nombre
+   */
+  async findByName(name: string): Promise<Company[]> {
+    return prisma.company.findMany({
+      where: {
+        name: {
+          equals: name,
+          mode: 'insensitive',
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
 }
 
 export const companyRepository = new CompanyRepository();

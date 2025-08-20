@@ -1,6 +1,6 @@
 import { NextFunction } from 'grammy';
 import { MyContext } from '../types';
-import { userRepository } from '@financial-bot/database';
+import { userRepository, permissionsService } from '@financial-bot/database';
 import { logger } from '../utils/logger';
 import { BOT_MESSAGES } from '@financial-bot/shared';
 
@@ -80,7 +80,7 @@ export async function authMiddleware(ctx: MyContext, next: NextFunction) {
 }
 
 /**
- * Middleware que requiere rol de administrador
+ * Middleware que requiere rol de administrador (cualquier nivel)
  */
 export function requireAdmin(ctx: MyContext, next: NextFunction) {
   if (!ctx.session.user) {
@@ -88,7 +88,7 @@ export function requireAdmin(ctx: MyContext, next: NextFunction) {
     return;
   }
 
-  if (ctx.session.user.role !== 'ADMIN') {
+  if (!permissionsService.isAdminLevel(ctx.session.user.role)) {
     ctx.reply(BOT_MESSAGES.UNAUTHORIZED);
     return;
   }
@@ -97,10 +97,18 @@ export function requireAdmin(ctx: MyContext, next: NextFunction) {
 }
 
 /**
- * Helper para verificar si el usuario es admin
+ * Helper para verificar si el usuario es admin (cualquier nivel)
  */
 export function isAdmin(ctx: MyContext): boolean {
-  return ctx.session.user?.role === 'ADMIN';
+  return ctx.session.user ? permissionsService.isAdminLevel(ctx.session.user.role) : false;
+}
+
+/**
+ * Helper para verificar si el usuario es Super Admin
+ */
+export async function isSuperAdmin(ctx: MyContext): Promise<boolean> {
+  if (!ctx.session.user) return false;
+  return await permissionsService.isSuperAdmin(ctx.session.user.telegramId);
 }
 
 /**
@@ -110,11 +118,8 @@ export function canEditMovement(ctx: MyContext, _movementUserId: string): boolea
   const user = ctx.session.user;
   if (!user) return false;
 
-  // Admin puede editar cualquier movimiento
-  if (user.role === 'ADMIN') return true;
-
-  // Operador solo puede ver sus propios movimientos (no editar)
-  return false;
+  // Cualquier nivel de admin puede editar movimientos
+  return permissionsService.isAdminLevel(user.role);
 }
 
 /**
@@ -125,8 +130,28 @@ export function canViewMovement(ctx: MyContext, movementUserId: string): boolean
   if (!user) return false;
 
   // Admin puede ver cualquier movimiento
-  if (user.role === 'ADMIN') return true;
+  if (permissionsService.isAdminLevel(user.role)) return true;
 
   // Operador solo puede ver sus propios movimientos
   return user.id === movementUserId;
+}
+
+/**
+ * Helper para verificar si el usuario puede gestionar otros usuarios
+ */
+export async function canManageUsers(ctx: MyContext, targetUserId?: string): Promise<boolean> {
+  const user = ctx.session.user;
+  if (!user) return false;
+
+  // Super admin puede gestionar a cualquiera
+  if (await permissionsService.isSuperAdmin(user.telegramId)) return true;
+
+  // Solo usuarios con nivel de admin pueden gestionar usuarios
+  if (!permissionsService.isAdminLevel(user.role)) return false;
+
+  // Si no hay usuario objetivo, verificar solo permisos generales
+  if (!targetUserId) return true;
+
+  // Verificar si puede gestionar al usuario específico
+  return await permissionsService.canUserManageUser(user.id, targetUserId);
 }

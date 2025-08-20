@@ -48,6 +48,12 @@ export async function handleConversationMessage(ctx: Context & MyContext) {
     return;
   }
 
+  // Manejar flujo de edición de movimientos
+  if (ctx.session.editMovementState) {
+    await handleEditMovementInput(ctx);
+    return;
+  }
+
   if (!conversationData || !conversationData.registerFlow) {
     // No hay conversación activa, respuesta por defecto
     await ctx.reply(
@@ -1091,6 +1097,14 @@ async function handleAddUserInput(ctx: Context & MyContext) {
       case 'waiting_name':
         await handleNameInput(ctx, text, addUserState);
         break;
+      case 'selecting_companies':
+        // Este paso se maneja por callbacks, no por texto
+        await ctx.reply(
+          '🏢 **Esperando selección de empresas**\n\n' +
+            'Por favor selecciona las empresas usando los botones de arriba.',
+          { parse_mode: 'Markdown' },
+        );
+        break;
       default:
         delete ctx.session.addUserState;
         await ctx.reply('❌ Error en el flujo. Usa /menu para continuar.');
@@ -1197,27 +1211,201 @@ async function handleNameInput(ctx: Context & MyContext, text: string, addUserSt
   const firstName = nameParts[0];
   const lastName = nameParts.slice(1).join(' ') || '';
 
-  // Mostrar confirmación
-  const message =
-    `✅ **Confirmar Agregar Usuario**\n\n` +
-    `📱 **Chat ID:** ${addUserState.chatId}\n` +
-    `👤 **Nombre:** ${firstName}\n` +
-    `👤 **Apellido:** ${lastName || '(Sin apellido)'}\n` +
-    `🏢 **Empresa:** ${user!.company.name}\n` +
-    `👔 **Rol inicial:** Operador\n\n` +
-    `¿Confirmas agregar este usuario?`;
+  // Guardar nombre en el estado
+  addUserState.firstName = firstName;
+  addUserState.lastName = lastName;
 
-  await ctx.reply(message, {
-    parse_mode: 'Markdown',
-    reply_markup: new InlineKeyboard()
-      .text(
-        '✅ Sí, Agregar',
-        `users_confirm_add_${addUserState.chatId}_${encodeURIComponent(firstName)}_${encodeURIComponent(lastName)}`,
-      )
-      .text('❌ Cancelar', 'main_users')
-      .row(),
-  });
+  try {
+    // Obtener empresas disponibles para el usuario administrador
+    const userCompanies = await userRepository.getUserCompanies(user!.id);
+    const approvedCompanies = userCompanies
+      .filter(uc => uc.company.status === 'APPROVED')
+      .map(uc => ({
+        id: uc.company.id,
+        name: uc.company.name,
+      }));
 
-  // Limpiar estado temporal
-  delete ctx.session.addUserState;
+    if (approvedCompanies.length === 0) {
+      await ctx.reply(
+        '❌ **No tienes empresas disponibles**\n\n' +
+          'No puedes agregar usuarios porque no tienes empresas aprobadas.',
+        { parse_mode: 'Markdown' },
+      );
+      delete ctx.session.addUserState;
+      return;
+    }
+
+    if (approvedCompanies.length === 1) {
+      // Solo una empresa, agregar automáticamente
+      const message =
+        `✅ **Confirmar Agregar Usuario**\n\n` +
+        `📱 **Chat ID:** ${addUserState.chatId}\n` +
+        `👤 **Nombre:** ${firstName}\n` +
+        `👤 **Apellido:** ${lastName || '(Sin apellido)'}\n` +
+        `🏢 **Empresa:** ${approvedCompanies[0].name}\n` +
+        `👔 **Rol inicial:** Operador\n\n` +
+        `¿Confirmas agregar este usuario?`;
+
+      await ctx.reply(message, {
+        parse_mode: 'Markdown',
+        reply_markup: new InlineKeyboard()
+          .text(
+            '✅ Sí, Agregar',
+            `users_confirm_add_${addUserState.chatId}_${encodeURIComponent(firstName)}_${encodeURIComponent(lastName)}_${approvedCompanies[0].id}`,
+          )
+          .text('❌ Cancelar', 'main_users')
+          .row(),
+      });
+
+      delete ctx.session.addUserState;
+    } else {
+      // Múltiples empresas, mostrar selector
+      addUserState.step = 'selecting_companies';
+      addUserState.availableCompanies = approvedCompanies;
+      addUserState.selectedCompanies = [];
+      ctx.session.addUserState = addUserState;
+
+      const keyboard = new InlineKeyboard();
+
+      // Agregar botones para cada empresa
+      approvedCompanies.forEach(company => {
+        keyboard.text(`🏢 ${company.name}`, `user_add_toggle_company_${company.id}`).row();
+      });
+
+      keyboard
+        .text('✅ Continuar', 'user_add_confirm_companies')
+        .text('❌ Cancelar', 'main_users')
+        .row();
+
+      const message =
+        `🏢 **Seleccionar Empresas**\n\n` +
+        `👤 **Usuario:** ${firstName} ${lastName}\n` +
+        `📱 **Chat ID:** ${addUserState.chatId}\n\n` +
+        `**Selecciona las empresas** a las que tendrá acceso este usuario:\n\n` +
+        `💡 Puedes seleccionar múltiples empresas`;
+
+      await ctx.reply(message, {
+        parse_mode: 'Markdown',
+        reply_markup: keyboard,
+      });
+    }
+  } catch (error) {
+    console.error('Error getting companies for user:', error);
+    await ctx.reply('❌ Error al obtener empresas. Intenta nuevamente.');
+    delete ctx.session.addUserState;
+  }
+}
+
+/**
+ * Manejar entrada de texto para flujo de edición de movimientos
+ */
+async function handleEditMovementInput(ctx: Context & MyContext) {
+  const user = ctx.session.user;
+  const editState = ctx.session.editMovementState;
+
+  if (!user || !editState) {
+    delete ctx.session.editMovementState;
+    await ctx.reply('❌ Error en el flujo de edición.');
+    return;
+  }
+
+  const text = ctx.message?.text?.trim();
+
+  if (!text) {
+    await ctx.reply('❌ Por favor envía un mensaje de texto.');
+    return;
+  }
+
+  try {
+    const { movementId, field } = editState;
+
+    // Verificar que el movimiento existe y que el usuario puede editarlo
+    const movement = await movementRepository.findById(movementId);
+    if (!movement) {
+      await ctx.reply('❌ Movimiento no encontrado.');
+      delete ctx.session.editMovementState;
+      return;
+    }
+
+    const { canEditMovement } = await import('../../middleware/auth');
+    if (!canEditMovement(ctx, movement.userId)) {
+      await ctx.reply('❌ No tienes permisos para editar este movimiento.');
+      delete ctx.session.editMovementState;
+      return;
+    }
+
+    let updateData: Record<string, unknown> = {};
+    let successMessage = '';
+
+    switch (field) {
+      case 'amount': {
+        const amount = parseFloat(text.replace(/[^0-9.-]/g, ''));
+
+        if (isNaN(amount) || amount <= 0) {
+          await ctx.reply(
+            '❌ **Monto inválido**\n\n' +
+              'Por favor escribe un número válido mayor a 0.\n\n' +
+              '**Ejemplos válidos:** 150, 50.5, 1200',
+            { parse_mode: 'Markdown' },
+          );
+          return;
+        }
+
+        updateData = { amount };
+        successMessage = `✅ Monto actualizado: $${amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
+        break;
+      }
+
+      case 'description':
+        if (text.length < 3) {
+          await ctx.reply(
+            '❌ **Descripción muy corta**\n\n' +
+              'Por favor escribe una descripción de al menos 3 caracteres.',
+            { parse_mode: 'Markdown' },
+          );
+          return;
+        }
+
+        if (text.length > 100) {
+          await ctx.reply(
+            '❌ **Descripción muy larga**\n\n' +
+              'Por favor escribe una descripción de máximo 100 caracteres.',
+            { parse_mode: 'Markdown' },
+          );
+          return;
+        }
+
+        updateData = { description: text };
+        successMessage = `✅ Descripción actualizada: ${text}`;
+        break;
+
+      default:
+        await ctx.reply('❌ Campo no válido para edición de texto.');
+        delete ctx.session.editMovementState;
+        return;
+    }
+
+    // Actualizar el movimiento
+    await movementRepository.update(movementId, updateData);
+
+    await ctx.reply(successMessage);
+
+    // Limpiar estado
+    delete ctx.session.editMovementState;
+
+    // Mostrar el detalle actualizado del movimiento
+    const InlineKeyboard = (await import('grammy')).InlineKeyboard;
+    const keyboard = new InlineKeyboard()
+      .text('📊 Ver Detalle', `movement_detail_${movementId}`)
+      .text('📋 Ver Movimientos', 'main_movements')
+      .row();
+
+    await ctx.reply('¿Qué deseas hacer ahora?', {
+      reply_markup: keyboard,
+    });
+  } catch (error) {
+    console.error('Error editing movement:', error);
+    delete ctx.session.editMovementState;
+    await ctx.reply('❌ Error al editar movimiento. Intenta nuevamente.');
+  }
 }

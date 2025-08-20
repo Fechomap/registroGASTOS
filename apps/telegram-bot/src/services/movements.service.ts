@@ -4,6 +4,8 @@ import {
   personalMovementRepository,
   userRepository,
   PersonalMovementWithRelations,
+  companyRepository,
+  permissionsService,
 } from '@financial-bot/database';
 import {
   MovementFilterBuilder,
@@ -50,28 +52,83 @@ export class MovementsService {
     let movements: (MovementWithRelations | PersonalMovementWithRelations)[] = [];
     let totalCount = 0;
 
+    // Verificar si es Super Admin
+    const user = await userRepository.findById(userId);
+    const isSuperAdmin = user ? await permissionsService.isSuperAdmin(user.telegramId) : false;
+    console.log(
+      `🔍 Verificando permisos - Usuario: ${user?.firstName} (${user?.telegramId}), Super Admin: ${isSuperAdmin}`,
+    );
+
     // Para admins: pueden ver movimientos empresariales + sus personales
     if (userRole === 'ADMIN') {
-      // Movimientos empresariales (con filtros si se proporcionan)
-      const companyFilters = filters || { companyId };
+      if (isSuperAdmin) {
+        // Super Admin: ver movimientos de TODAS las empresas aprobadas con paginación eficiente
+        const allCompanies = await companyRepository.findApprovedCompanies();
+        console.log(
+          `🔍 Super Admin detectado! Empresas encontradas:`,
+          allCompanies.map(c => ({ id: c.id, name: c.name })),
+        );
 
-      const companyMovements = await movementRepository.findMany(companyFilters, {
-        skip,
-        take: limit,
-      });
-      const companyCount = await movementRepository.count(companyFilters);
+        // Para cada empresa, obtener solo los movimientos necesarios para la página actual
+        let allCompanyMovements: MovementWithRelations[] = [];
+        let allCompanyCount = 0;
 
-      movements = [...companyMovements];
-      totalCount = companyCount;
+        for (const company of allCompanies) {
+          const companyFilters = filters
+            ? { ...filters, companyId: company.id }
+            : { companyId: company.id };
 
-      // Si incluye personales, agregar movimientos personales del admin
-      if (includePersonal) {
-        const personalMovements = await personalMovementRepository.findByUser(userId, {
-          offset: 0,
-          limit: limit,
+          // Obtener movimientos con limit mayor para luego ordenar y paginar globalmente
+          const companyMovements = await movementRepository.findMany(companyFilters, {
+            skip: 0,
+            take: Math.min(500, skip + limit * 2), // Limit razonable
+          });
+          const companyCount = await movementRepository.count(companyFilters);
+
+          console.log(
+            `📊 Empresa ${company.name}: ${companyMovements.length} movimientos encontrados de ${companyCount} totales`,
+          );
+          allCompanyMovements = [...allCompanyMovements, ...companyMovements];
+          allCompanyCount += companyCount;
+        }
+
+        // Ordenar todos los movimientos por fecha y aplicar paginación
+        movements = allCompanyMovements
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+          .slice(skip, skip + limit);
+        totalCount = allCompanyCount;
+
+        // Si incluye personales, agregar movimientos personales del Super Admin
+        if (includePersonal) {
+          const personalMovements = await personalMovementRepository.findByUser(userId, {
+            offset: 0,
+            limit: limit,
+          });
+          movements = [...movements, ...personalMovements];
+          totalCount += personalMovements.length;
+        }
+      } else {
+        // Admin normal: solo su empresa
+        const companyFilters = filters || { companyId };
+
+        const companyMovements = await movementRepository.findMany(companyFilters, {
+          skip,
+          take: limit,
         });
-        movements = [...movements, ...personalMovements];
-        totalCount += personalMovements.length;
+        const companyCount = await movementRepository.count(companyFilters);
+
+        movements = [...companyMovements];
+        totalCount = companyCount;
+
+        // Si incluye personales, agregar movimientos personales del admin
+        if (includePersonal) {
+          const personalMovements = await personalMovementRepository.findByUser(userId, {
+            offset: 0,
+            limit: limit,
+          });
+          movements = [...movements, ...personalMovements];
+          totalCount += personalMovements.length;
+        }
       }
     } else {
       // Para operadores: solo movimientos personales
@@ -192,16 +249,30 @@ export class MovementsService {
     return await generator.generateMovementsReport(options);
   }
 
-  formatMovementMessage(
+  async formatMovementMessage(
     summary: MovementSummary,
     companyName: string,
     userRole: 'ADMIN' | 'OPERATOR',
     userName: string,
-  ): string {
-    let message = `📊 **Ver Movimientos - ${companyName}**\n\n`;
+    userId: string,
+  ): Promise<string> {
+    // Verificar si es Super Admin
+    const user = await userRepository.findById(userId);
+    const isSuperAdmin = user ? await permissionsService.isSuperAdmin(user.telegramId) : false;
+
+    let message = '';
+
+    if (isSuperAdmin) {
+      message = `📊 **Ver Movimientos - TODAS LAS EMPRESAS**\n\n`;
+    } else {
+      message = `📊 **Ver Movimientos - ${companyName}**\n\n`;
+    }
 
     if (userRole === 'ADMIN') {
       message += `👑 **Admin:** ${userName}\n`;
+      if (isSuperAdmin) {
+        message += `🌟 **Super Admin** - Acceso total\n`;
+      }
     } else {
       message += `👤 **Usuario:** ${userName}\n`;
     }
@@ -212,6 +283,11 @@ export class MovementsService {
     message += `• Ingresos: $${summary.totalIncomes.toLocaleString('es-MX', { minimumFractionDigits: 2 })}\n`;
     message += `• Balance: $${summary.balance.toLocaleString('es-MX', { minimumFractionDigits: 2 })}\n\n`;
 
+    // Si es Super Admin, mostrar solo un indicador simple
+    if (isSuperAdmin) {
+      message += `🌟 **Acceso multi-empresa activo**\n\n`;
+    }
+
     if (summary.movements.length === 0) {
       message += `📭 **No hay movimientos**\n\n`;
       message += `Usa el botón "Registrar Gasto" para agregar tu primer movimiento.`;
@@ -219,6 +295,9 @@ export class MovementsService {
     }
 
     message += `📋 **Últimos movimientos** (Página ${summary.pagination.page} de ${summary.pagination.totalPages}):\n\n`;
+    console.log(
+      `📋 Mostrando ${summary.movements.length} movimientos de ${summary.totalMovements} totales`,
+    );
 
     summary.movements.forEach((movement, _index) => {
       const typeIcon = movement.type === 'EXPENSE' ? '💸' : '💰';
@@ -287,17 +366,31 @@ export class MovementsService {
   /**
    * Formatear mensaje de movimientos con indicadores de filtros
    */
-  formatMovementMessageWithFilters(
+  async formatMovementMessageWithFilters(
     summary: MovementSummary,
     companyName: string,
     userRole: 'ADMIN' | 'OPERATOR',
     userName: string,
+    userId: string,
     filterState?: MovementFilterState,
-  ): string {
-    let message = `📊 **Ver Movimientos - ${companyName}**\n\n`;
+  ): Promise<string> {
+    // Verificar si es Super Admin
+    const user = await userRepository.findById(userId);
+    const isSuperAdmin = user ? await permissionsService.isSuperAdmin(user.telegramId) : false;
+
+    let message = '';
+
+    if (isSuperAdmin) {
+      message = `📊 **Ver Movimientos - TODAS LAS EMPRESAS**\n\n`;
+    } else {
+      message = `📊 **Ver Movimientos - ${companyName}**\n\n`;
+    }
 
     if (userRole === 'ADMIN') {
       message += `👑 **Admin:** ${userName}\n`;
+      if (isSuperAdmin) {
+        message += `🌟 **Super Admin** - Acceso total\n`;
+      }
     } else {
       message += `👤 **Usuario:** ${userName}\n`;
     }
@@ -337,6 +430,11 @@ export class MovementsService {
     message += `• Gastos: $${summary.totalExpenses.toLocaleString('es-MX', { minimumFractionDigits: 2 })}\n`;
     message += `• Ingresos: $${summary.totalIncomes.toLocaleString('es-MX', { minimumFractionDigits: 2 })}\n`;
     message += `• Balance: $${summary.balance.toLocaleString('es-MX', { minimumFractionDigits: 2 })}\n\n`;
+
+    // Si es Super Admin, mostrar solo un indicador simple
+    if (isSuperAdmin) {
+      message += `🌟 **Acceso multi-empresa activo**\n\n`;
+    }
 
     return message;
   }

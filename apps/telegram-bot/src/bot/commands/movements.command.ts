@@ -1,13 +1,17 @@
 import { CommandContext } from 'grammy';
 import { MyContext } from '../../types';
-import { movementRepository } from '@financial-bot/database';
+import {
+  movementRepository,
+  permissionsService,
+  Permission,
+  MovementWithRelations,
+} from '@financial-bot/database';
 import { logger } from '../../utils/logger';
 import { formatCurrency, formatDate, LIMITS } from '@financial-bot/shared';
 
 /**
- * Comando /movimientos - Lista los movimientos del usuario
- * Los operadores solo ven sus propios movimientos
- * Los admins pueden ver todos los movimientos o filtrar por usuario
+ * Comando /movimientos - Lista los movimientos del usuario con permisos multi-empresa
+ * Respeta permisos granulares por empresa
  */
 export async function movementsCommand(ctx: CommandContext<MyContext>) {
   const user = ctx.session.user;
@@ -20,42 +24,84 @@ export async function movementsCommand(ctx: CommandContext<MyContext>) {
   try {
     const args = ctx.match?.toString().trim();
     let page = 1;
-    let targetUserId: string | undefined = user.id; // Por defecto, mostrar movimientos propios
+    let selectedCompanyId: string | undefined;
 
-    // Parsear argumentos (página opcional)
+    // Parsear argumentos: [página] [empresa] opcional
     if (args) {
-      const pageNum = parseInt(args);
+      const parts = args.split(' ');
+      const pageNum = parseInt(parts[0]);
       if (!isNaN(pageNum) && pageNum > 0) {
         page = pageNum;
       }
+      if (parts[1]) {
+        selectedCompanyId = parts[1];
+      }
     }
 
-    // Solo los admins pueden ver movimientos de otros usuarios
-    if (user.role === 'ADMIN') {
-      // TODO: En el futuro implementar filtros por usuario específico
-      // Por ahora, los admins ven todos los movimientos de la empresa
-      targetUserId = undefined; // Ver todos
+    // Obtener empresas accesibles para el usuario
+    const accessibleCompanies = await permissionsService.getUserAccessibleCompanies(user.id);
+
+    if (accessibleCompanies.length === 0) {
+      await ctx.reply('❌ No tienes acceso a ninguna empresa.');
+      return;
     }
+
+    // Determinar qué empresas consultar
+    let companiesToQuery = accessibleCompanies;
+    if (selectedCompanyId) {
+      if (accessibleCompanies.includes(selectedCompanyId)) {
+        companiesToQuery = [selectedCompanyId];
+      } else {
+        await ctx.reply('❌ No tienes acceso a esa empresa.');
+        return;
+      }
+    }
+
+    // Verificar alcance de reportes del usuario
+    const reportScope = await permissionsService.getUserReportScope(user.id);
 
     // Configuración de paginación
     const limit = LIMITS.DEFAULT_PAGE_SIZE;
     const skip = (page - 1) * limit;
 
-    // Obtener movimientos
-    const filters = {
-      companyId: user.companyId,
-      ...(targetUserId && { userId: targetUserId }),
-    };
+    // Obtener movimientos según permisos
+    let allMovements: MovementWithRelations[] = [];
+    let totalCount = 0;
 
-    const movements = await movementRepository.findMany(filters, {
-      skip,
-      take: limit,
-    });
+    for (const companyId of companiesToQuery) {
+      // Verificar permisos específicos para esta empresa
+      const canView = await permissionsService.hasPermission(
+        user.id,
+        companyId,
+        Permission.VIEW_MOVEMENTS,
+      );
 
-    const totalCount = await movementRepository.count(filters);
+      if (!canView.hasPermission) {
+        continue; // Saltar empresas sin permisos
+      }
+
+      const filters: { companyId: string; userId?: string } = { companyId };
+
+      // Si no es Super Admin y no tiene permisos de reporte, solo ve sus movimientos
+      if (reportScope === 'own') {
+        filters.userId = user.id;
+      }
+
+      const companyMovements = await movementRepository.findMany(filters, {
+        skip: 0, // Obtenemos todos para luego paginar el resultado completo
+        take: 1000, // Límite razonable por empresa
+      });
+
+      allMovements = [...allMovements, ...companyMovements];
+    }
+
+    // Ordenar por fecha (más recientes primero) y paginar
+    allMovements.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    totalCount = allMovements.length;
     const totalPages = Math.ceil(totalCount / limit);
+    const paginatedMovements = allMovements.slice(skip, skip + limit);
 
-    if (movements.length === 0) {
+    if (paginatedMovements.length === 0) {
       const message =
         page === 1
           ? '📋 No tienes movimientos registrados aún.\n\nUsa /gasto [monto] [descripción] para registrar tu primer gasto.'
@@ -66,17 +112,16 @@ export async function movementsCommand(ctx: CommandContext<MyContext>) {
     }
 
     // Construir mensaje
-    let message = `📋 <b>Movimientos</b> (Página ${page} de ${totalPages})\n\n`;
+    let message = `📋 <b>Movimientos Multi-empresa</b> (Página ${page} de ${totalPages})\n\n`;
 
-    if (user.role === 'ADMIN' && !targetUserId) {
-      message += `🏢 <b>Empresa:</b> ${user.company.name}\n`;
-      message += `📊 <b>Total de movimientos:</b> ${totalCount}\n\n`;
-    } else {
-      message += `👤 <b>Mis movimientos:</b> ${totalCount}\n\n`;
-    }
+    // Información de alcance
+    message += `👤 <b>Usuario:</b> ${user.firstName}\n`;
+    message += `🔐 <b>Alcance:</b> ${reportScope === 'all' ? 'Super Admin' : reportScope === 'company' ? 'Multi-empresa' : 'Personal'}\n`;
+    message += `🏢 <b>Empresas consultadas:</b> ${companiesToQuery.length}/${accessibleCompanies.length}\n`;
+    message += `📊 <b>Total de movimientos:</b> ${totalCount}\n\n`;
 
     // Listar movimientos
-    movements.forEach((movement, _index) => {
+    paginatedMovements.forEach((movement, _index) => {
       const typeIcon = movement.type === 'EXPENSE' ? '💸' : '💰';
       const amount = formatCurrency(Number(movement.amount));
       const date = formatDate(movement.date, 'short');
@@ -87,8 +132,14 @@ export async function movementsCommand(ctx: CommandContext<MyContext>) {
         `📝 ${movement.description}\n` +
         `📅 ${date}`;
 
-      if (user.role === 'ADMIN' && movement.user.id !== user.id) {
+      // Mostrar usuario si no es el usuario actual
+      if (movement.user.id !== user.id) {
         message += ` • ${movement.user.firstName}`;
+      }
+
+      // Mostrar empresa si hay múltiples empresas
+      if (companiesToQuery.length > 1 && movement.company) {
+        message += ` • ${movement.company.name}`;
       }
 
       if (movement.category) {
@@ -114,11 +165,12 @@ export async function movementsCommand(ctx: CommandContext<MyContext>) {
     }
 
     message += `\n💡 <b>Consejos:</b>\n`;
+    message += `• Usa <code>/movimientos [página] [empresa]</code> para filtrar\n`;
 
-    if (user.role === 'ADMIN') {
-      message +=
-        `• Usa <code>/editar [folio]</code> para editar un movimiento\n` +
-        `• Usa <code>/eliminar [folio]</code> para eliminar un movimiento\n`;
+    // Mostrar comandos según permisos
+    if (reportScope !== 'own') {
+      message += `• Usa <code>/editar [folio]</code> para editar un movimiento\n`;
+      message += `• Usa <code>/eliminar [folio]</code> para eliminar un movimiento\n`;
     }
 
     message += `• Usa <code>/reporte</code> para generar reportes detallados`;
@@ -129,12 +181,14 @@ export async function movementsCommand(ctx: CommandContext<MyContext>) {
     });
 
     // Log de la actividad
-    logger.info('Movements listed', {
+    logger.info('Multi-company movements listed', {
       userId: user.id,
       page,
       totalCount,
       totalPages,
-      isAdmin: user.role === 'ADMIN',
+      reportScope,
+      companiesQueried: companiesToQuery.length,
+      accessibleCompanies: accessibleCompanies.length,
     });
   } catch (error) {
     logger.error('Error in movements command:', error);

@@ -678,6 +678,7 @@ export async function handleUsersConfirmAdd(ctx: CallbackQueryContext<MyContext>
     const chatId = parts[0];
     const firstName = decodeURIComponent(parts[1]);
     const lastName = decodeURIComponent(parts[2]);
+    const companyId = parts[3] || user.companyId; // Usar companyId especificado o el del usuario
 
     // Verificar nuevamente que el usuario no exista
     const existingUser = await userRepository.findByChatId(chatId);
@@ -694,14 +695,31 @@ export async function handleUsersConfirmAdd(ctx: CallbackQueryContext<MyContext>
       lastName: lastName === 'undefined' ? null : lastName,
       role: 'OPERATOR',
       isActive: true,
-      company: { connect: { id: user.companyId } },
+      company: { connect: { id: companyId } },
     });
+
+    // Crear la relación UserCompany para soporte multi-empresa
+    try {
+      await userRepository.addUserToCompany(newUser.id, companyId, 'OPERATOR');
+    } catch (error) {
+      // Si ya existe la relación, continuar
+      console.log(
+        `UserCompany relation already exists for user ${newUser.id} and company ${companyId}`,
+      );
+    }
+
+    // Crear categorías personales predefinidas para el nuevo usuario
+    const { personalCategoryRepository } = await import('@financial-bot/database');
+    await personalCategoryRepository.createDefaultCategories(newUser.id);
+
+    // Obtener nombre de la empresa
+    const companyName = user.companyId === companyId ? user.company.name : 'Empresa seleccionada';
 
     const message =
       `✅ **¡Usuario agregado exitosamente!**\n\n` +
       `👤 **Nombre:** ${firstName} ${lastName || ''}\n` +
       `📱 **Chat ID:** ${chatId}\n` +
-      `🏢 **Empresa:** ${user.company.name}\n` +
+      `🏢 **Empresa:** ${companyName}\n` +
       `👔 **Rol:** Operador\n\n` +
       `🔔 El usuario puede ahora usar el bot enviando /start`;
 
@@ -720,6 +738,167 @@ export async function handleUsersConfirmAdd(ctx: CallbackQueryContext<MyContext>
   } catch (error) {
     logBotError(error as Error, { command: 'users_confirm_add' });
     await ctx.answerCallbackQuery('❌ Error al agregar usuario');
+  }
+}
+
+/**
+ * Alternar selección de empresa para agregar usuario
+ */
+export async function handleUserAddToggleCompany(ctx: CallbackQueryContext<MyContext>) {
+  const user = ctx.session.user;
+  const data = ctx.callbackQuery.data;
+  const addUserState = ctx.session.addUserState;
+
+  if (!user || user.role !== 'ADMIN' || !data || !addUserState) {
+    await ctx.answerCallbackQuery('❌ Error en el flujo');
+    return;
+  }
+
+  try {
+    const companyId = data.replace('user_add_toggle_company_', '');
+
+    if (!addUserState.selectedCompanies) {
+      addUserState.selectedCompanies = [];
+    }
+
+    // Toggle company selection
+    if (addUserState.selectedCompanies.includes(companyId)) {
+      addUserState.selectedCompanies = addUserState.selectedCompanies.filter(
+        id => id !== companyId,
+      );
+    } else {
+      addUserState.selectedCompanies.push(companyId);
+    }
+
+    ctx.session.addUserState = addUserState;
+
+    // Actualizar el mensaje con las selecciones
+    const keyboard = new InlineKeyboard();
+
+    if (addUserState.availableCompanies) {
+      addUserState.availableCompanies.forEach(company => {
+        const isSelected = addUserState.selectedCompanies?.includes(company.id);
+        const icon = isSelected ? '✅' : '🏢';
+        keyboard.text(`${icon} ${company.name}`, `user_add_toggle_company_${company.id}`).row();
+      });
+    }
+
+    keyboard
+      .text('✅ Continuar', 'user_add_confirm_companies')
+      .text('❌ Cancelar', 'main_users')
+      .row();
+
+    const selectedCount = addUserState.selectedCompanies.length;
+    const selectedText =
+      selectedCount > 0 ? `\n\n✅ **Empresas seleccionadas:** ${selectedCount}` : '';
+
+    const message =
+      `🏢 **Seleccionar Empresas**\n\n` +
+      `👤 **Usuario:** ${addUserState.firstName} ${addUserState.lastName}\n` +
+      `📱 **Chat ID:** ${addUserState.chatId}\n\n` +
+      `**Selecciona las empresas** a las que tendrá acceso este usuario:${selectedText}\n\n` +
+      `💡 Puedes seleccionar múltiples empresas`;
+
+    await ctx.editMessageText(message, {
+      parse_mode: 'Markdown',
+      reply_markup: keyboard,
+    });
+
+    await ctx.answerCallbackQuery();
+  } catch (error) {
+    logBotError(error as Error, { command: 'user_add_toggle_company' });
+    await ctx.answerCallbackQuery('❌ Error al seleccionar empresa');
+  }
+}
+
+/**
+ * Confirmar empresas seleccionadas para agregar usuario
+ */
+export async function handleUserAddConfirmCompanies(ctx: CallbackQueryContext<MyContext>) {
+  const user = ctx.session.user;
+  const addUserState = ctx.session.addUserState;
+
+  if (!user || user.role !== 'ADMIN' || !addUserState) {
+    await ctx.answerCallbackQuery('❌ Error en el flujo');
+    return;
+  }
+
+  if (!addUserState.selectedCompanies || addUserState.selectedCompanies.length === 0) {
+    await ctx.answerCallbackQuery('❌ Debes seleccionar al menos una empresa');
+    return;
+  }
+
+  try {
+    const { chatId, firstName, lastName, selectedCompanies, availableCompanies } = addUserState;
+
+    // Verificar nuevamente que el usuario no exista
+    const existingUser = await userRepository.findByChatId(chatId!);
+    if (existingUser) {
+      await ctx.answerCallbackQuery('❌ El usuario ya existe');
+      delete ctx.session.addUserState;
+      return;
+    }
+
+    // Crear el usuario usando la primera empresa como primaria
+    const primaryCompanyId = selectedCompanies[0];
+    const newUser = await userRepository.create({
+      telegramId: chatId!,
+      chatId: chatId!,
+      firstName: firstName!,
+      lastName: lastName === 'undefined' ? null : lastName,
+      role: 'OPERATOR',
+      isActive: true,
+      company: { connect: { id: primaryCompanyId } },
+    });
+
+    // Crear relaciones UserCompany para todas las empresas seleccionadas
+    for (const companyId of selectedCompanies) {
+      try {
+        await userRepository.addUserToCompany(newUser.id, companyId, 'OPERATOR');
+      } catch (error) {
+        // Si ya existe la relación (por la empresa primaria), continuar
+        console.log(
+          `UserCompany relation already exists for user ${newUser.id} and company ${companyId}`,
+        );
+      }
+    }
+
+    // Crear categorías personales predefinidas para el nuevo usuario
+    const { personalCategoryRepository } = await import('@financial-bot/database');
+    await personalCategoryRepository.createDefaultCategories(newUser.id);
+
+    // Preparar lista de empresas para mostrar
+    const selectedCompanyNames =
+      availableCompanies
+        ?.filter(company => selectedCompanies.includes(company.id))
+        .map(company => company.name)
+        .join(', ') || 'Empresas seleccionadas';
+
+    const message =
+      `✅ **¡Usuario agregado exitosamente!**\n\n` +
+      `👤 **Nombre:** ${firstName} ${lastName || ''}\n` +
+      `📱 **Chat ID:** ${chatId}\n` +
+      `🏢 **Empresas:** ${selectedCompanyNames}\n` +
+      `👔 **Rol:** Operador\n\n` +
+      `🔔 El usuario puede ahora usar el bot enviando /start`;
+
+    await ctx.editMessageText(message, {
+      parse_mode: 'Markdown',
+      reply_markup: new InlineKeyboard()
+        .text('👤 Gestionar Usuario', `user_manage_${newUser.id}`)
+        .text('📋 Ver Lista', 'users_list')
+        .row()
+        .text('➕ Agregar Otro', 'users_add')
+        .text('◀️ Menú Usuarios', 'main_users')
+        .row(),
+    });
+
+    await ctx.answerCallbackQuery('✅ Usuario agregado correctamente');
+    delete ctx.session.addUserState;
+  } catch (error) {
+    logBotError(error as Error, { command: 'user_add_confirm_companies' });
+    await ctx.answerCallbackQuery('❌ Error al agregar usuario');
+    delete ctx.session.addUserState;
   }
 }
 

@@ -97,7 +97,12 @@ export class UserRepository {
    * Agregar usuario a una empresa (crear relación UserCompany)
    */
   async addUserToCompany(userId: string, companyId: string, role: UserRole = UserRole.OPERATOR) {
-    return prisma.userCompany.create({
+    // Importar permisos por defecto
+    const { permissionsService } = await import('../services/permissions.service');
+    const defaultPermissions = permissionsService.getDefaultPermissionsByRole(role);
+
+    // Crear la relación UserCompany
+    const userCompany = await prisma.userCompany.create({
       data: {
         userId,
         companyId,
@@ -108,6 +113,53 @@ export class UserRepository {
         user: true,
       },
     });
+
+    // Actualizar permisos con SQL directo
+    await prisma.$executeRaw`
+      UPDATE user_companies 
+      SET permissions = ${JSON.stringify(defaultPermissions)}
+      WHERE "userId" = ${userId} AND "companyId" = ${companyId}
+    `;
+
+    return userCompany;
+  }
+
+  /**
+   * Actualizar permisos de un usuario en una empresa
+   */
+  async updateUserCompanyPermissions(
+    userId: string,
+    companyId: string,
+    permissions: Record<string, unknown>,
+  ) {
+    return prisma.$executeRaw`
+      UPDATE user_companies 
+      SET permissions = ${JSON.stringify(permissions)}
+      WHERE "userId" = ${userId} AND "companyId" = ${companyId}
+    `;
+  }
+
+  /**
+   * Obtener permisos específicos de un usuario en una empresa
+   */
+  async getUserCompanyPermissions(userId: string, companyId: string) {
+    const result = await prisma.$queryRaw<{ permissions: string }[]>`
+      SELECT permissions 
+      FROM user_companies 
+      WHERE "userId" = ${userId} AND "companyId" = ${companyId}
+    `;
+
+    if (!result.length || !result[0].permissions) {
+      return null;
+    }
+
+    try {
+      return typeof result[0].permissions === 'string'
+        ? JSON.parse(result[0].permissions)
+        : result[0].permissions;
+    } catch {
+      return null;
+    }
   }
 }
 

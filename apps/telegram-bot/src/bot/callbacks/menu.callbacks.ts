@@ -206,6 +206,18 @@ export async function handleMenuCallback(ctx: CallbackQueryContext<MyContext>) {
           return;
         }
 
+        if (data?.startsWith('user_add_toggle_company_')) {
+          const { handleUserAddToggleCompany } = await import('./users.callbacks');
+          await handleUserAddToggleCompany(ctx);
+          return;
+        }
+
+        if (data?.startsWith('user_add_confirm_companies')) {
+          const { handleUserAddConfirmCompanies } = await import('./users.callbacks');
+          await handleUserAddConfirmCompanies(ctx);
+          return;
+        }
+
         // Manejar selección de categorías (expense flow)
         if (data?.startsWith('category_select_')) {
           await handleCategorySelectCallback(ctx);
@@ -305,6 +317,43 @@ export async function handleMenuCallback(ctx: CallbackQueryContext<MyContext>) {
 
         if (data?.startsWith('movement_detail_')) {
           await handleMovementDetail(ctx);
+          return;
+        }
+
+        // Callbacks del sistema CRUD de movimientos
+        if (data?.startsWith('movement_edit_field_')) {
+          const { handleMovementEditField } = await import('./movements.callbacks');
+          await handleMovementEditField(ctx);
+          return;
+        }
+
+        if (data?.startsWith('movement_edit_')) {
+          const { handleMovementEdit } = await import('./movements.callbacks');
+          await handleMovementEdit(ctx);
+          return;
+        }
+
+        if (data?.startsWith('movement_update_category_')) {
+          const { handleMovementUpdateCategory } = await import('./movements.callbacks');
+          await handleMovementUpdateCategory(ctx);
+          return;
+        }
+
+        if (data?.startsWith('movement_update_date_')) {
+          const { handleMovementUpdateDate } = await import('./movements.callbacks');
+          await handleMovementUpdateDate(ctx);
+          return;
+        }
+
+        if (data?.startsWith('movement_delete_confirm_')) {
+          const { handleMovementDeleteConfirm } = await import('./movements.callbacks');
+          await handleMovementDeleteConfirm(ctx);
+          return;
+        }
+
+        if (data?.startsWith('movement_delete_')) {
+          const { handleMovementDelete } = await import('./movements.callbacks');
+          await handleMovementDelete(ctx);
           return;
         }
 

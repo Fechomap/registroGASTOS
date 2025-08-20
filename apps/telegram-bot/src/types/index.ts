@@ -4,6 +4,7 @@ import { HydrateFlavor } from '@grammyjs/hydrate';
 import { User, Company, UserWithCompany } from '@financial-bot/database';
 import { MovementFilters } from '@financial-bot/reports';
 import { ReportFilters } from '../services/reports.service';
+import { AdvancedReportFilters } from '../services/advanced-reports.service';
 import { MovementFilterState, FilterNavigationContext } from './filter.types';
 
 // Datos de sesión
@@ -13,7 +14,10 @@ export interface SessionData {
   movementFilterState?: MovementFilterState;
   filterNavigation?: FilterNavigationContext;
   reportFilters?: ReportFilters;
+  advancedReportFilters?: AdvancedReportFilters;
+  companiesWithPermission?: string[]; // Empresas donde el usuario tiene permisos para el comando actual
   addUserState?: AddUserState;
+  editMovementState?: EditMovementState;
   conversationData?: {
     registerFlow?: RegisterFlowData;
     companyRegistration?: CompanyRegistrationData;
@@ -31,11 +35,13 @@ export interface CompanyRegistrationData {
 
 // Datos para agregar usuario
 export interface AddUserState {
-  step: 'waiting_chat_id' | 'waiting_name' | 'confirm';
+  step: 'waiting_chat_id' | 'waiting_name' | 'selecting_companies' | 'confirm';
   chatId?: string;
   firstName?: string;
   lastName?: string;
   companyId: string;
+  availableCompanies?: Array<{ id: string; name: string }>;
+  selectedCompanies?: string[];
 }
 
 // Contexto personalizado del bot
@@ -82,6 +88,13 @@ export interface EditFlowData {
   movementId: string;
   field?: 'amount' | 'description' | 'category' | 'date';
   newValue?: number | string | Date | null;
+}
+
+// Estado de edición de movimientos
+export interface EditMovementState {
+  movementId: string;
+  field: 'amount' | 'description' | 'category' | 'date';
+  currentValue: unknown;
 }
 
 // Datos para gestión de usuarios
