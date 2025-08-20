@@ -3,14 +3,11 @@ import {
   CompanyPermissions,
   DEFAULT_OPERATOR_PERMISSIONS,
   DEFAULT_ADMIN_PERMISSIONS,
-  DEFAULT_COMPANY_ADMIN_PERMISSIONS,
-  DEFAULT_ORGANIZATION_ADMIN_PERMISSIONS,
   SUPER_ADMIN_PERMISSIONS,
   Permission,
   PermissionCheck,
   ReportScope,
   SystemRole,
-  getDefaultPermissionsByRole,
   canManageRole,
   getAssignableRoles,
 } from '../types/permissions';
@@ -147,7 +144,12 @@ export class PermissionsService {
         return ReportScope.ALL_MOVEMENTS;
       }
 
-      // Verificar si tiene permisos de reporte en alguna empresa
+      // Los operadores SIEMPRE tienen alcance limitado a sus propios movimientos
+      if (user.role === 'OPERATOR') {
+        return ReportScope.OWN_MOVEMENTS;
+      }
+
+      // Para administradores, verificar si tiene permisos de reporte en alguna empresa
       const userCompanies = await userRepository.getUserCompanies(userId);
       const hasReportPermissions = userCompanies.some(uc => {
         const permissions = uc.permissions as unknown as CompanyPermissions;
@@ -209,12 +211,6 @@ export class PermissionsService {
    */
   getDefaultPermissionsByRole(role: UserRole): CompanyPermissions {
     switch (role) {
-      case UserRole.SUPER_ADMIN:
-        return SUPER_ADMIN_PERMISSIONS;
-      case UserRole.ORGANIZATION_ADMIN:
-        return DEFAULT_ORGANIZATION_ADMIN_PERMISSIONS;
-      case UserRole.COMPANY_ADMIN:
-        return DEFAULT_COMPANY_ADMIN_PERMISSIONS;
       case UserRole.ADMIN:
         return DEFAULT_ADMIN_PERMISSIONS;
       case UserRole.OPERATOR:
@@ -229,12 +225,6 @@ export class PermissionsService {
    */
   private userRoleToSystemRole(role: UserRole): SystemRole {
     switch (role) {
-      case UserRole.SUPER_ADMIN:
-        return SystemRole.SUPER_ADMIN;
-      case UserRole.ORGANIZATION_ADMIN:
-        return SystemRole.ORGANIZATION_ADMIN;
-      case UserRole.COMPANY_ADMIN:
-        return SystemRole.COMPANY_ADMIN;
       case UserRole.ADMIN:
         return SystemRole.ADMIN;
       case UserRole.OPERATOR:
@@ -298,12 +288,7 @@ export class PermissionsService {
    * Verificar si un usuario tiene al menos nivel de administrador
    */
   isAdminLevel(role: UserRole): boolean {
-    return [
-      UserRole.SUPER_ADMIN,
-      UserRole.ORGANIZATION_ADMIN,
-      UserRole.COMPANY_ADMIN,
-      UserRole.ADMIN,
-    ].includes(role);
+    return role === UserRole.ADMIN;
   }
 }
 

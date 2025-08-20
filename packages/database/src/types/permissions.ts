@@ -11,8 +11,8 @@ export interface CompanyPermissions {
 
 export const DEFAULT_OPERATOR_PERMISSIONS: CompanyPermissions = {
   canView: true,
-  canEdit: false,
-  canReport: false,
+  canEdit: true, // Los operadores SOLO pueden crear gastos empresariales (no editar)
+  canReport: false, // Operadores pueden generar reportes pero solo de sus propios movimientos
   canManageUsers: false,
 };
 

@@ -602,11 +602,18 @@ export async function handleGenerateReport(ctx: CallbackQueryContext<MyContext>)
       }
     } else {
       // Usuario normal: solo su empresa
-      const filters = ctx.session.movementFilterState?.isActive
+      const baseFilters = ctx.session.movementFilterState?.isActive
         ? filtersService.convertToMovementFilters(ctx.session.movementFilterState, user.companyId)
         : { companyId: user.companyId };
 
-      allMovements = await movementRepository.findMany(filters);
+      // Para operadores: filtrar solo SUS movimientos empresariales
+      if (user.role === 'OPERATOR') {
+        const operatorFilters = { ...baseFilters, userId: user.id };
+        allMovements = await movementRepository.findMany(operatorFilters);
+      } else {
+        // Para admins: todos los movimientos de la empresa
+        allMovements = await movementRepository.findMany(baseFilters);
+      }
     }
 
     // Crear filtros para el reporte (sin companyId específico para Super Admin)

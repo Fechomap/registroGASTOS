@@ -100,8 +100,8 @@ export class AdvancedReportsService {
 
       case ReportScope.OWN_MOVEMENTS:
       default:
-        // Operador - solo movimientos propios
-        allMovements = await this.getPersonalMovements(userId, filters);
+        // Operador - solo movimientos propios (personales y empresariales)
+        allMovements = await this.getOwnMovements(userId, targetCompanies, filters);
         break;
     }
 
@@ -197,6 +197,9 @@ export class AdvancedReportsService {
           'report_scope_company',
         )
         .row();
+    } else if (reportScope === ReportScope.OWN_MOVEMENTS) {
+      // Operador - solo opciones básicas
+      keyboard.text('📋 Categorías', 'report_categories').row();
     }
 
     // Botones de generación
@@ -314,16 +317,144 @@ export class AdvancedReportsService {
     return allMovements;
   }
 
-  private async getPersonalMovements(
+  private async getOwnMovements(
+    userId: string,
+    companyIds: string[],
+    filters: AdvancedReportFilters,
+  ): Promise<(MovementWithRelations | PersonalMovementWithRelations)[]> {
+    const allMovements: (MovementWithRelations | PersonalMovementWithRelations)[] = [];
+
+    // Movimientos empresariales del usuario (solo los que él registró)
+    if (filters.scope === 'COMPANY' || filters.scope === 'ALL') {
+      for (const companyId of companyIds) {
+        const filterBuilder = new MovementFilterBuilder(companyId);
+        this.applyFilters(filterBuilder, filters);
+
+        // CRUCIAL: Filtrar solo por movimientos del usuario actual
+        filterBuilder.byUser(userId);
+
+        const userCompanyMovements = await movementRepository.findMany(filterBuilder.build());
+        allMovements.push(...userCompanyMovements);
+      }
+    }
+
+    // Movimientos personales del usuario
+    if (filters.scope === 'PERSONAL' || filters.scope === 'ALL') {
+      const personalFilters = {
+        type: filters.type !== 'ALL' ? filters.type : undefined,
+        // TODO: Agregar filtros de fecha según período
+      };
+      const personalMovements = await personalMovementRepository.findByUser(
+        userId,
+        personalFilters,
+      );
+      allMovements.push(...personalMovements);
+    }
+
+    return allMovements;
+  }
+
+  /**
+   * Obtener movimientos filtrados para exportación (Excel/PDF)
+   * Respeta permisos del usuario
+   */
+  async getMovementsForExport(
     userId: string,
     filters: AdvancedReportFilters,
-  ): Promise<PersonalMovementWithRelations[]> {
-    const personalFilters = {
-      type: filters.type !== 'ALL' ? filters.type : undefined,
-      // TODO: Agregar filtros de fecha según período
-    };
+  ): Promise<MovementWithRelations[]> {
+    const reportScope = await permissionsService.getUserReportScope(userId);
+    const user = await userRepository.findById(userId);
+    const isSuperAdmin = user ? await permissionsService.isSuperAdmin(user.telegramId) : false;
 
-    return await personalMovementRepository.findByUser(userId, personalFilters);
+    let targetCompanies: string[];
+
+    if (isSuperAdmin && reportScope === ReportScope.ALL_MOVEMENTS) {
+      const allCompanies = await companyRepository.findApprovedCompanies();
+      targetCompanies = allCompanies.map(company => company.id);
+      if (filters.companyIds && filters.companyIds.length > 0) {
+        targetCompanies = filters.companyIds;
+      }
+    } else {
+      const accessibleCompanies = await permissionsService.getUserAccessibleCompanies(userId);
+      targetCompanies = accessibleCompanies;
+      if (filters.companyIds && filters.companyIds.length > 0) {
+        targetCompanies = filters.companyIds.filter(id => accessibleCompanies.includes(id));
+      }
+    }
+
+    // Obtener solo movimientos empresariales (no personales para Excel/PDF)
+    let allMovements: MovementWithRelations[] = [];
+
+    switch (reportScope) {
+      case ReportScope.ALL_MOVEMENTS:
+        allMovements = await this.getAllCompanyMovements(targetCompanies, filters);
+        break;
+      case ReportScope.COMPANY_MOVEMENTS:
+        allMovements = await this.getCompanyMovementsOnly(userId, targetCompanies, filters);
+        break;
+      case ReportScope.OWN_MOVEMENTS:
+      default:
+        allMovements = await this.getOwnCompanyMovements(userId, targetCompanies, filters);
+        break;
+    }
+
+    return allMovements;
+  }
+
+  private async getAllCompanyMovements(
+    companyIds: string[],
+    filters: AdvancedReportFilters,
+  ): Promise<MovementWithRelations[]> {
+    const allMovements: MovementWithRelations[] = [];
+
+    for (const companyId of companyIds) {
+      const filterBuilder = new MovementFilterBuilder(companyId);
+      this.applyFilters(filterBuilder, filters);
+      const companyMovements = await movementRepository.findMany(filterBuilder.build());
+      allMovements.push(...companyMovements);
+    }
+
+    return allMovements;
+  }
+
+  private async getCompanyMovementsOnly(
+    userId: string,
+    companyIds: string[],
+    filters: AdvancedReportFilters,
+  ): Promise<MovementWithRelations[]> {
+    const allMovements: MovementWithRelations[] = [];
+
+    for (const companyId of companyIds) {
+      if (await this.canGenerateReports(userId, companyId)) {
+        const filterBuilder = new MovementFilterBuilder(companyId);
+        this.applyFilters(filterBuilder, filters);
+        const companyMovements = await movementRepository.findMany(filterBuilder.build());
+        allMovements.push(...companyMovements);
+      }
+    }
+
+    return allMovements;
+  }
+
+  private async getOwnCompanyMovements(
+    userId: string,
+    companyIds: string[],
+    filters: AdvancedReportFilters,
+  ): Promise<MovementWithRelations[]> {
+    const allMovements: MovementWithRelations[] = [];
+
+    for (const companyId of companyIds) {
+      const filterBuilder = new MovementFilterBuilder(companyId);
+      this.applyFilters(filterBuilder, filters);
+
+      // CRÍTICO: Filtrar solo por movimientos del usuario actual
+      filterBuilder.byUser(userId);
+
+      const userCompanyMovements = await movementRepository.findMany(filterBuilder.build());
+      allMovements.push(...userCompanyMovements);
+    }
+
+    return allMovements;
   }
 
   private applyFilters(filterBuilder: MovementFilterBuilder, filters: AdvancedReportFilters) {

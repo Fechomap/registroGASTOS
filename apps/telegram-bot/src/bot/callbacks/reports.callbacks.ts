@@ -6,9 +6,6 @@ import {
   personalCategoryRepository,
   userRepository,
   permissionsService,
-  companyRepository,
-  movementRepository,
-  MovementWithRelations,
 } from '@financial-bot/database';
 import { logBotError } from '../../utils/logger';
 import {
@@ -58,8 +55,14 @@ export async function handleShowReportsPanel(ctx: CallbackQueryContext<MyContext
     const accessibleCompanies = await permissionsService.getUserAccessibleCompanies(user.id);
     let message = `📊 **Panel de Reportes**\n\n`;
     message += `👤 **Usuario:** ${user.firstName}\n`;
-    message += `🔐 **Alcance:** ${reportScope === 'all' ? 'Super Admin' : reportScope === 'company' ? 'Multi-empresa' : 'Personal'}\n`;
-    message += `🏢 **Empresas accesibles:** ${accessibleCompanies.length}\n\n`;
+
+    if (reportScope === 'own') {
+      message += `🔐 **Alcance:** Solo tus movimientos\n`;
+      message += `📌 **Nota:** Como operador, solo puedes ver los gastos que tú registraste\n\n`;
+    } else {
+      message += `🔐 **Alcance:** ${reportScope === 'all' ? 'Super Admin' : reportScope === 'company' ? 'Multi-empresa' : 'Personal'}\n`;
+      message += `🏢 **Empresas accesibles:** ${accessibleCompanies.length}\n\n`;
+    }
 
     // Resumen de movimientos
     message += `📈 **Resumen**\n`;
@@ -446,23 +449,8 @@ export async function handleGenerateReports(ctx: CallbackQueryContext<MyContext>
     const isSuperAdmin = await permissionsService.isSuperAdmin(user.telegramId);
     const companyNameForReport = isSuperAdmin ? 'TODAS LAS EMPRESAS' : user.company.name;
 
-    // Obtener todos los movimientos del reporte
-    let allMovements: MovementWithRelations[] = [];
-
-    if (isSuperAdmin) {
-      // Super Admin: obtener movimientos de todas las empresas
-      const allCompanies = await companyRepository.findApprovedCompanies();
-
-      for (const company of allCompanies) {
-        const companyFilters = { companyId: company.id };
-        const companyMovements = await movementRepository.findMany(companyFilters);
-        allMovements = [...allMovements, ...companyMovements];
-      }
-    } else {
-      // Usuario normal: solo su empresa
-      const companyFilters = { companyId: user.companyId };
-      allMovements = await movementRepository.findMany(companyFilters);
-    }
+    // Obtener todos los movimientos del reporte usando el servicio avanzado
+    const allMovements = await advancedReportsService.getMovementsForExport(user.id, filters);
 
     // Generar Excel
     const excelBuffer = await reportsService.generateExcelReport(

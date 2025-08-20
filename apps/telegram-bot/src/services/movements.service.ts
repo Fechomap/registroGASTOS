@@ -131,17 +131,30 @@ export class MovementsService {
         }
       }
     } else {
-      // Para operadores: solo movimientos personales
-      const personalMovements = await personalMovementRepository.findByUser(userId, {
-        offset: skip,
-        limit: limit,
-      });
-      // Contar total de movimientos personales (usar findByUser sin limit para contar)
-      const allPersonalMovements = await personalMovementRepository.findByUser(userId);
-      const personalCount = allPersonalMovements.length;
+      // Para operadores: solo SUS movimientos empresariales de la empresa
+      const companyFilters = {
+        companyId: companyId,
+        userId: userId, // CRÍTICO: Filtrar por el usuario operador
+      };
 
-      movements = personalMovements;
-      totalCount = personalCount;
+      const companyMovements = await movementRepository.findMany(companyFilters, {
+        skip,
+        take: limit,
+      });
+      const companyCount = await movementRepository.count(companyFilters);
+
+      movements = companyMovements;
+      totalCount = companyCount;
+
+      // Opcionalmente incluir personales si se solicita explícitamente
+      if (includePersonal) {
+        const personalMovements = await personalMovementRepository.findByUser(userId, {
+          offset: 0,
+          limit: Math.max(0, limit - companyMovements.length), // Llenar hasta el límite
+        });
+        movements = [...movements, ...personalMovements];
+        totalCount += personalMovements.length;
+      }
     }
 
     // Ordenar por fecha descendente
