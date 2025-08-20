@@ -70,6 +70,16 @@ export class UserRepository {
   }
 
   async delete(id: string): Promise<User> {
+    // Eliminar relaciones que no tienen Cascade
+    await prisma.movement.deleteMany({
+      where: { userId: id },
+    });
+
+    await prisma.auditLog.deleteMany({
+      where: { userId: id },
+    });
+
+    // Las demás relaciones tienen onDelete: Cascade y se eliminan automáticamente
     return prisma.user.delete({
       where: { id },
     });

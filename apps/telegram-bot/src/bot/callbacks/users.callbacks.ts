@@ -846,7 +846,7 @@ export async function handleUserAddConfirmCompanies(ctx: CallbackQueryContext<My
       chatId: chatId!,
       firstName: firstName!,
       lastName: lastName === 'undefined' ? null : lastName,
-      role: 'OPERATOR',
+      role: UserRole.OPERATOR,
       isActive: true,
       company: { connect: { id: primaryCompanyId } },
     });
@@ -854,11 +854,24 @@ export async function handleUserAddConfirmCompanies(ctx: CallbackQueryContext<My
     // Crear relaciones UserCompany para todas las empresas seleccionadas
     for (const companyId of selectedCompanies) {
       try {
-        await userRepository.addUserToCompany(newUser.id, companyId, 'OPERATOR');
-      } catch (error) {
-        // Si ya existe la relación (por la empresa primaria), continuar
         console.log(
-          `UserCompany relation already exists for user ${newUser.id} and company ${companyId}`,
+          `Creando relación UserCompany para usuario ${newUser.id} y empresa ${companyId}`,
+        );
+        const userCompany = await userRepository.addUserToCompany(
+          newUser.id,
+          companyId,
+          UserRole.OPERATOR,
+        );
+        console.log(`✅ Relación creada exitosamente:`, {
+          userId: userCompany.userId,
+          companyId: userCompany.companyId,
+          role: userCompany.role,
+          permissions: userCompany.permissions,
+        });
+      } catch (error) {
+        console.error(
+          `❌ Error creando relación UserCompany para usuario ${newUser.id} y empresa ${companyId}:`,
+          error,
         );
       }
     }

@@ -97,7 +97,7 @@ export function setupCommands(bot: Bot<MyContext>) {
   });
 
   // Callbacks para gestión de usuarios
-  bot.callbackQuery(/^user_/, async ctx => {
+  bot.callbackQuery(/^user_delete_/, async ctx => {
     const data = ctx.callbackQuery.data;
 
     if (data === 'user_delete_cancel') {
@@ -176,7 +176,7 @@ export function setupCommands(bot: Bot<MyContext>) {
 
   // Callbacks para menús principales
   bot.callbackQuery(
-    /^main_|^admin_|^users_|^categories_|^movements_|^movement_|^user_|^category_manage_|^profile_|^expense_|^category_select_|^date_select_|^photo_skip$|^date_back_to_options$/,
+    /^main_|^admin_|^users_|^categories_|^movements_|^movement_|^user_|^user_add_toggle_company_|^user_add_confirm_companies|^category_manage_|^profile_|^expense_|^category_select_|^date_select_|^photo_skip$|^date_back_to_options$/,
     async ctx => {
       await handleMenuCallback(ctx);
     },
