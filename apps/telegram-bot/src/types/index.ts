@@ -13,6 +13,7 @@ export interface SessionData {
   movementFilterState?: MovementFilterState;
   filterNavigation?: FilterNavigationContext;
   reportFilters?: ReportFilters;
+  addUserState?: AddUserState;
   conversationData?: {
     registerFlow?: RegisterFlowData;
     companyRegistration?: CompanyRegistrationData;
@@ -26,6 +27,15 @@ export interface CompanyRegistrationData {
   name?: string;
   email?: string;
   phone?: string;
+}
+
+// Datos para agregar usuario
+export interface AddUserState {
+  step: 'waiting_chat_id' | 'waiting_name' | 'confirm';
+  chatId?: string;
+  firstName?: string;
+  lastName?: string;
+  companyId: string;
 }
 
 // Contexto personalizado del bot

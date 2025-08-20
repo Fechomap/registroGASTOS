@@ -35,16 +35,10 @@ export async function handleShowMovements(ctx: CallbackQueryContext<MyContext>) 
       ctx.session.filterNavigation = filtersService.createInitialNavigationContext();
     }
 
-    // DEBUG: Verificar estado de filtros
-    console.log('🔍 DEBUG Ver Movimientos:');
-    console.log('  movementFilterState:', JSON.stringify(ctx.session.movementFilterState, null, 2));
-
     // Obtener resumen de movimientos con filtros aplicados
     const filters = ctx.session.movementFilterState.isActive
       ? filtersService.convertToMovementFilters(ctx.session.movementFilterState, user.companyId)
       : { companyId: user.companyId };
-
-    console.log('  filters aplicados:', JSON.stringify(filters, null, 2));
 
     const summary = await movementsService.getMovements(user.companyId, user.id, user.role, {
       page: 1,
@@ -190,11 +184,6 @@ export async function handleApplyPeriodFilter(ctx: CallbackQueryContext<MyContex
       ctx.session.movementFilterState,
       periodType,
     );
-
-    // DEBUG: Verificar que el filtro se aplicó correctamente
-    console.log('🔍 DEBUG Aplicar Período:');
-    console.log('  periodType:', periodType);
-    console.log('  nuevo estado:', JSON.stringify(ctx.session.movementFilterState, null, 2));
 
     await ctx.answerCallbackQuery(
       `✅ Período aplicado: ${ctx.session.movementFilterState.period?.label}`,

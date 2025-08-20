@@ -54,6 +54,11 @@ import {
   handleUserDeleteConfirm,
   handleUserDeleteFinal,
   handleUsersRoles,
+  handleUserActivate,
+  handleUserDeactivate,
+  handleUsersDelete,
+  handleUserMovements,
+  handleUsersConfirmAdd,
 } from './users.callbacks';
 import { handleCategoriesList, handleCategoriesAdd } from './categories.callbacks';
 
@@ -142,6 +147,9 @@ export async function handleMenuCallback(ctx: CallbackQueryContext<MyContext>) {
       case 'users_roles':
         await handleUsersRoles(ctx);
         break;
+      case 'users_delete':
+        await handleUsersDelete(ctx);
+        break;
 
       // Callbacks de gestión de categorías
       case 'categories_list':
@@ -175,6 +183,26 @@ export async function handleMenuCallback(ctx: CallbackQueryContext<MyContext>) {
 
         if (data?.startsWith('user_delete_final_')) {
           await handleUserDeleteFinal(ctx);
+          return;
+        }
+
+        if (data?.startsWith('user_activate_')) {
+          await handleUserActivate(ctx);
+          return;
+        }
+
+        if (data?.startsWith('user_deactivate_')) {
+          await handleUserDeactivate(ctx);
+          return;
+        }
+
+        if (data?.startsWith('user_movements_')) {
+          await handleUserMovements(ctx);
+          return;
+        }
+
+        if (data?.startsWith('users_confirm_add_')) {
+          await handleUsersConfirmAdd(ctx);
           return;
         }
 

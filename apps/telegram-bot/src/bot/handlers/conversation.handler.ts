@@ -1,5 +1,5 @@
 import { Context } from 'grammy';
-import { MyContext, RegisterFlowData } from '../../types';
+import { MyContext, RegisterFlowData, AddUserState } from '../../types';
 import { InlineKeyboard } from 'grammy';
 import {
   movementRepository,
@@ -39,6 +39,12 @@ export async function handleConversationMessage(ctx: Context & MyContext) {
   if (conversationData?.companyRegistration) {
     const { handleCompanyRegistrationInput } = await import('./company-setup.handler');
     await handleCompanyRegistrationInput(ctx);
+    return;
+  }
+
+  // Manejar flujo de agregar usuario
+  if (ctx.session.addUserState) {
+    await handleAddUserInput(ctx);
     return;
   }
 
@@ -1020,4 +1026,163 @@ export async function showFinalConfirmationStep(
     console.error('Error showing final confirmation:', error);
     await ctx.reply('❌ Error al procesar el gasto. Intenta nuevamente.');
   }
+}
+
+/**
+ * Manejar entrada de texto para flujo de agregar usuario
+ */
+async function handleAddUserInput(ctx: Context & MyContext) {
+  const user = ctx.session.user;
+  const addUserState = ctx.session.addUserState;
+
+  if (!user || user.role !== 'ADMIN' || !addUserState) {
+    delete ctx.session.addUserState;
+    await ctx.reply('❌ Error en el flujo de agregar usuario.');
+    return;
+  }
+
+  const text = ctx.message?.text?.trim();
+
+  if (!text) {
+    await ctx.reply('❌ Por favor envía un mensaje de texto.');
+    return;
+  }
+
+  try {
+    switch (addUserState.step) {
+      case 'waiting_chat_id':
+        await handleChatIdInput(ctx, text, addUserState);
+        break;
+      case 'waiting_name':
+        await handleNameInput(ctx, text, addUserState);
+        break;
+      default:
+        delete ctx.session.addUserState;
+        await ctx.reply('❌ Error en el flujo. Usa /menu para continuar.');
+    }
+  } catch (error) {
+    console.error('Error handling add user input:', error);
+    delete ctx.session.addUserState;
+    await ctx.reply('❌ Error procesando entrada. Intenta nuevamente.');
+  }
+}
+
+/**
+ * Manejar entrada de Chat ID
+ */
+async function handleChatIdInput(
+  ctx: Context & MyContext,
+  text: string,
+  addUserState: AddUserState,
+) {
+  // Validar que sea un número
+  const chatId = text.replace(/\D/g, ''); // Remover todo lo que no sea dígito
+
+  if (!chatId || chatId.length < 8) {
+    await ctx.reply(
+      '❌ **Chat ID inválido**\n\n' +
+        'El Chat ID debe ser un número de al menos 8 dígitos.\n\n' +
+        '**Ejemplo:** 123456789\n\n' +
+        'Envía el Chat ID correcto:',
+      { parse_mode: 'Markdown' },
+    );
+    return;
+  }
+
+  // Verificar que el usuario no exista ya
+  try {
+    const existingUser = await userRepository.findByChatId(chatId);
+    if (existingUser) {
+      await ctx.reply(
+        '❌ **Usuario ya existe**\n\n' +
+          `El usuario con Chat ID ${chatId} ya está registrado.\n\n` +
+          '**Nombre:** ' +
+          existingUser.firstName +
+          ' ' +
+          (existingUser.lastName || '') +
+          '\n' +
+          '**Empresa:** ' +
+          (existingUser.company?.name || 'Sin empresa') +
+          '\n\n' +
+          'Envía un Chat ID diferente:',
+        { parse_mode: 'Markdown' },
+      );
+      return;
+    }
+  } catch (error) {
+    console.error('Error checking existing user:', error);
+  }
+
+  // Guardar Chat ID y pedir nombre
+  addUserState.chatId = chatId;
+  addUserState.step = 'waiting_name';
+  ctx.session.addUserState = addUserState;
+
+  await ctx.reply(
+    `✅ **Chat ID válido: ${chatId}**\n\n` +
+      '👤 **Ahora envía el nombre completo del usuario:**\n\n' +
+      '💡 **Formato:** Nombre Apellido\n' +
+      '**Ejemplo:** Juan Pérez\n\n' +
+      '📝 Escribe el nombre:',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: new InlineKeyboard().text('❌ Cancelar', 'main_users'),
+    },
+  );
+}
+
+/**
+ * Manejar entrada de nombre
+ */
+async function handleNameInput(ctx: Context & MyContext, text: string, addUserState: AddUserState) {
+  const user = ctx.session.user;
+
+  if (text.length < 2) {
+    await ctx.reply(
+      '❌ **Nombre muy corto**\n\n' +
+        'El nombre debe tener al menos 2 caracteres.\n\n' +
+        'Envía el nombre completo:',
+      { parse_mode: 'Markdown' },
+    );
+    return;
+  }
+
+  if (text.length > 50) {
+    await ctx.reply(
+      '❌ **Nombre muy largo**\n\n' +
+        'El nombre debe tener máximo 50 caracteres.\n\n' +
+        'Envía un nombre más corto:',
+      { parse_mode: 'Markdown' },
+    );
+    return;
+  }
+
+  // Separar nombre y apellido
+  const nameParts = text.trim().split(' ');
+  const firstName = nameParts[0];
+  const lastName = nameParts.slice(1).join(' ') || '';
+
+  // Mostrar confirmación
+  const message =
+    `✅ **Confirmar Agregar Usuario**\n\n` +
+    `📱 **Chat ID:** ${addUserState.chatId}\n` +
+    `👤 **Nombre:** ${firstName}\n` +
+    `👤 **Apellido:** ${lastName || '(Sin apellido)'}\n` +
+    `🏢 **Empresa:** ${user!.company.name}\n` +
+    `👔 **Rol inicial:** Operador\n\n` +
+    `¿Confirmas agregar este usuario?`;
+
+  await ctx.reply(message, {
+    parse_mode: 'Markdown',
+    reply_markup: new InlineKeyboard()
+      .text(
+        '✅ Sí, Agregar',
+        `users_confirm_add_${addUserState.chatId}_${encodeURIComponent(firstName)}_${encodeURIComponent(lastName)}`,
+      )
+      .text('❌ Cancelar', 'main_users')
+      .row(),
+  });
+
+  // Limpiar estado temporal
+  delete ctx.session.addUserState;
 }
